@@ -3,16 +3,22 @@ import calendar
 import os
 from datetime import date, datetime, timedelta, timezone
 
+import tempfile
+
 from flask import (Flask, Response, abort, flash, redirect, render_template,
                    request, url_for)
+from werkzeug.utils import secure_filename
 
-from . import db
+from . import db, importer
 from .db import execute, query
 
 # ---------------------------------------------------------------------------
 # Choice lists
 # ---------------------------------------------------------------------------
 POLICY_TYPES = [
+    "Motor - Private Car Comprehensive", "Motor - Private Car Third Party", "Motor - Private Car",
+    "Motor - Commercial Comprehensive", "Motor - Commercial Third Party",
+    "Fire - Homeowners / Comprehensive Building", "Fire - Commercial",
     "Auto", "Homeowners", "Renters", "Condo", "Life - Term", "Life - Whole",
     "Life - Universal", "Health", "Medicare Supplement", "Medicare Advantage",
     "Dental", "Vision", "Disability", "Long-Term Care", "Umbrella",
@@ -64,8 +70,8 @@ def today():
 # Form helpers
 # ---------------------------------------------------------------------------
 CLIENT_FIELDS = [
-    ("first_name", "First name", "text", None, True),
-    ("last_name", "Last name", "text", None, True),
+    ("first_name", "First name (leave blank for a business)", "text", None, False),
+    ("last_name", "Last name / business name", "text", None, True),
     ("phone", "Phone", "tel", None, False),
     ("alt_phone", "Alternate phone", "tel", None, False),
     ("email", "Email", "email", None, False),
@@ -291,7 +297,9 @@ def create_app(database=None):
                     WHEN 'Monthly' THEN premium * 12 WHEN 'Quarterly' THEN premium * 4
                     WHEN 'Semi-Annual' THEN premium * 2 ELSE premium END
                     * COALESCE(commission_rate, 0) / 100), 0)
-                 FROM policies WHERE status = 'Active') AS annual_commission""", one=True)
+                 FROM policies WHERE status = 'Active') AS annual_commission,
+                (SELECT COALESCE(SUM(amount), 0) FROM commissions
+                 WHERE statement_month LIKE ?) AS commission_ytd""", (f"{today().year}-%",), one=True)
         tasks = [r for r in task_reminders() if r["days"] <= 7]
         return render_template("dashboard.html", overdue=overdue, upcoming=upcoming,
                                renewals=renewal_alerts(), meetings=meetings, stats=stats,
@@ -381,11 +389,13 @@ def create_app(database=None):
         payments = query("SELECT * FROM payments WHERE policy_id = ? ORDER BY paid_on DESC",
                          (policy_id,))
         total_paid = sum(p["amount"] for p in payments)
+        commissions = query("SELECT * FROM commissions WHERE policy_id = ? ORDER BY term_from DESC",
+                            (policy_id,))
         days_due = None
         if policy["next_due_date"]:
             days_due = (parse_date(policy["next_due_date"]) - today()).days
         return render_template("policy_detail.html", p=policy, payments=payments,
-                               total_paid=total_paid, days_due=days_due,
+                               total_paid=total_paid, days_due=days_due, commissions=commissions,
                                methods=PAYMENT_METHODS)
 
     @app.route("/policies/<int:policy_id>/edit", methods=["GET", "POST"])
@@ -432,6 +442,57 @@ def create_app(database=None):
         execute("DELETE FROM payments WHERE id = ?", (payment_id,))
         flash("Payment removed (the next-due date was not changed).")
         return redirect(url_for("policy_detail", policy_id=row["policy_id"]))
+
+    # ---------------- Commissions ----------------
+    @app.route("/commissions")
+    def commissions():
+        month = request.args.get("month", "")
+        months = [r["statement_month"] for r in query(
+            "SELECT DISTINCT statement_month FROM commissions WHERE statement_month IS NOT NULL "
+            "ORDER BY statement_month DESC")]
+        sql = """SELECT cm.*, p.policy_number, p.policy_type, p.client_id FROM commissions cm
+                 LEFT JOIN policies p ON p.id = cm.policy_id"""
+        args = ()
+        if month:
+            sql += " WHERE cm.statement_month = ?"
+            args = (month,)
+        rows = query(sql + " ORDER BY cm.statement_month DESC, cm.term_from", args)
+        by_month = query("""SELECT statement_month, COUNT(*) AS n, SUM(amount) AS total
+                            FROM commissions GROUP BY statement_month
+                            ORDER BY statement_month DESC""")
+        return render_template("commissions.html", rows=rows, months=months, month=month,
+                               by_month=by_month, total=sum(r["amount"] for r in rows))
+
+    @app.template_filter("monthname")
+    def monthname(v):
+        try:
+            return datetime.strptime(v, "%Y-%m").strftime("%B %Y")
+        except (TypeError, ValueError):
+            return v or "—"
+
+    # ---------------- Import spreadsheets ----------------
+    @app.route("/import", methods=["GET", "POST"])
+    def import_view():
+        if request.method == "GET":
+            return render_template("import.html", report=None,
+                                   carrier=request.args.get("carrier", "Maritime General Insurance"))
+        files = [f for f in request.files.getlist("files") if f and f.filename]
+        carrier = request.form.get("carrier", "").strip()
+        if not files:
+            flash("Choose at least one spreadsheet to import.", "error")
+            return redirect(url_for("import_view"))
+        report = importer.Report()
+        # Commission statements first so renewals already invoiced aren't flagged as due.
+        files.sort(key=lambda f: 0 if "comm" in f.filename.lower() else 1)
+        with tempfile.TemporaryDirectory() as tmp:
+            for f in files:
+                path = os.path.join(tmp, secure_filename(f.filename) or "upload.xls")
+                f.save(path)
+                try:
+                    importer.import_file(path, carrier, display_name=f.filename, report=report)
+                except Exception as exc:  # bad / unreadable file
+                    report.add("Warning", f"{f.filename}: could not be read ({exc}).")
+        return render_template("import.html", report=report, carrier=carrier)
 
     # ---------------- Reminders ----------------
     @app.route("/reminders", methods=["GET", "POST"])
@@ -579,6 +640,8 @@ def create_app(database=None):
         errors = []
         if request.method == "POST":
             values, errors = read_form(fields)
+            if table == "clients":
+                values["first_name"] = values.get("first_name") or ""
             if not errors:
                 if row:
                     update(table, row["id"], values)

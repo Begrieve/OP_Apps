@@ -16,6 +16,7 @@
   <div class="stat"><span>{{ stats.active }}</span>Active policies</div>
   <div class="stat"><span>{{ stats.annual_premium|money }}</span>Annual premium in force</div>
   <div class="stat"><span>{{ stats.annual_commission|money }}</span>Est. annual commission</div>
+  <a class="stat" href="{{ url_for('commissions') }}"><span>{{ stats.commission_ytd|money }}</span>Commission received {{ today.year }}</a>
   <div class="stat {{ 'alert' if overdue }}"><span>{{ overdue|length }}</span>Overdue payments</div>
 </section>
 

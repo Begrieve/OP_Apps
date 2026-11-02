@@ -21,7 +21,7 @@
       {% elif ftype in ('client', 'client_optional') %}
         <select name="{{ name }}" {{ 'required' if required }}>
           <option value="">{{ '— choose a client —' if required else '— none —' }}</option>
-          {% for c in clients %}<option value="{{ c.id }}" {{ 'selected' if v == c.id }}>{{ c.last_name }}, {{ c.first_name }}</option>{% endfor %}
+          {% for c in clients %}<option value="{{ c.id }}" {{ 'selected' if v == c.id }}>{{ c.last_name }}{% if c.first_name %}, {{ c.first_name }}{% endif %}</option>{% endfor %}
         </select>
         {% if ftype == 'client' and not clients %}<small>No clients yet — <a href="{{ url_for('client_new') }}">add one first</a>.</small>{% endif %}
       {% else %}

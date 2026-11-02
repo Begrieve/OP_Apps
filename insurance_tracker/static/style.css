@@ -125,3 +125,5 @@ dd { margin: 0; }
 .ev.renewal { background: var(--renewal); }
 .ev.task { background: var(--task); }
 @media (max-width: 700px) { .cal-d { min-height: 80px; } .ev { font-size: .65rem; } }
+.stat:hover { text-decoration: none; border-color: var(--brand-2); }
+a.stat { color: var(--muted); }

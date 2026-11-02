@@ -12,7 +12,7 @@
   <tbody>
   {% for c in clients %}
   <tr>
-    <td><a href="{{ url_for('client_detail', client_id=c.id) }}"><strong>{{ c.last_name }}, {{ c.first_name }}</strong></a></td>
+    <td><a href="{{ url_for('client_detail', client_id=c.id) }}"><strong>{{ c.last_name }}{% if c.first_name %}, {{ c.first_name }}{% endif %}</strong></a></td>
     <td>{% if c.phone %}<a href="tel:{{ c.phone }}">{{ c.phone }}</a>{% endif %}</td>
     <td>{% if c.email %}<a href="mailto:{{ c.email }}">{{ c.email }}</a>{% endif %}</td>
     <td>{{ c.city or '' }}{% if c.state %}, {{ c.state }}{% endif %}</td>

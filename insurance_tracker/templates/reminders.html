@@ -34,7 +34,7 @@
   <form method="post" class="inline-form">
     <input name="title" placeholder="What do you need to remember?" required>
     <input type="date" name="due_date" value="{{ default_due }}" required>
-    <select name="client_id"><option value="">— no client —</option>{% for c in clients %}<option value="{{ c.id }}">{{ c.last_name }}, {{ c.first_name }}</option>{% endfor %}</select>
+    <select name="client_id"><option value="">— no client —</option>{% for c in clients %}<option value="{{ c.id }}">{{ c.last_name }}{% if c.first_name %}, {{ c.first_name }}{% endif %}</option>{% endfor %}</select>
     <input name="notes" placeholder="Notes (optional)">
     <button class="btn primary">Add reminder</button>
   </form>

@@ -1,6 +1,20 @@
 {% extends "base.html" %}
 {% from "_macros.html" import remind_mail %}
-{% block title %}{{ p.policy_type }} – {{ p.first_name }} {{ p.last_name }}{% endblock %}
+{% block title %}{{ p.policy_type }} – {{ p.first_name }} {{ p.last_name }}<section class="card">
+  <h2>Commissions <span class="muted">· total {{ (commissions|sum(attribute='amount'))|money }}</span></h2>
+  {% if commissions %}
+  <table class="list">
+    <thead><tr><th>Statement</th><th>Invoice</th><th>Term</th><th class="num">Rate</th><th class="num">Commission</th></tr></thead>
+    <tbody>
+    {% for c in commissions %}
+    <tr><td>{{ c.statement_month|monthname }}</td><td>{{ c.invoice_no }} <span class="muted">{{ c.class_code }}</span></td>
+      <td>{{ c.term_from|nicedate }} – {{ c.term_to|nicedate }}</td><td class="num">{{ c.rate|plainnum }}%</td><td class="num">{{ c.amount|money }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="empty">No commission recorded for this policy.</p>{% endif %}
+</section>
+{% endblock %}
 {% block content %}
 <div class="page-head">
   <h1>{{ p.policy_type }} <span class="pill s-{{ p.status|lower }}">{{ p.status }}</span></h1>
@@ -70,5 +84,19 @@
     </tbody>
   </table>
   {% else %}<p class="empty">No payments recorded yet.</p>{% endif %}
+</section>
+<section class="card">
+  <h2>Commissions <span class="muted">· total {{ (commissions|sum(attribute='amount'))|money }}</span></h2>
+  {% if commissions %}
+  <table class="list">
+    <thead><tr><th>Statement</th><th>Invoice</th><th>Term</th><th class="num">Rate</th><th class="num">Commission</th></tr></thead>
+    <tbody>
+    {% for c in commissions %}
+    <tr><td>{{ c.statement_month|monthname }}</td><td>{{ c.invoice_no }} <span class="muted">{{ c.class_code }}</span></td>
+      <td>{{ c.term_from|nicedate }} – {{ c.term_to|nicedate }}</td><td class="num">{{ c.rate|plainnum }}%</td><td class="num">{{ c.amount|money }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="empty">No commission recorded for this policy.</p>{% endif %}
 </section>
 {% endblock %}

@@ -23,7 +23,7 @@
   <tbody>
   {% for p in policies %}
   <tr>
-    <td><a href="{{ url_for('client_detail', client_id=p.client_id) }}">{{ p.last_name }}, {{ p.first_name }}</a></td>
+    <td><a href="{{ url_for('client_detail', client_id=p.client_id) }}">{{ p.last_name }}{% if p.first_name %}, {{ p.first_name }}{% endif %}</a></td>
     <td><a href="{{ url_for('policy_detail', policy_id=p.id) }}"><strong>{{ p.policy_type }}</strong></a></td>
     <td>{{ p.carrier or '' }}{% if p.policy_number %}<div class="muted">#{{ p.policy_number }}</div>{% endif %}</td>
     <td><span class="pill s-{{ p.status|lower }}">{{ p.status }}</span></td>

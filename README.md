@@ -29,6 +29,15 @@ everything in one SQLite database file (`insurance.db`).
   (with a 30-minute alert).
 - **Dashboard**: totals (clients, active policies, annual premium, estimated commission),
   overdue and upcoming payments, this week's meetings and to-dos, and upcoming renewals.
+- **Import insurer spreadsheets** (Import page): upload the monthly *Renewal Listing* and
+  *Commissions payable* Excel reports (.xls, .xlsx or .csv).
+  - Renewal listings add or update clients (address, phone) and policies (type of cover,
+    sum insured, vehicle/property, discounts, premium), set each renewal and payment-due date,
+    and create a reminder for any policy with an **outstanding premium**.
+  - Commission statements record every commission line on the **Commissions** page and fill in
+    policy terms and commission rates. A renewal already invoiced on the statement isn't flagged as due.
+  - Re-importing a file is safe: clients are matched by name, policies by policy number and
+    commissions by invoice number.
 - **Search**: by client name, phone, email, policy number, carrier or insured item.
 
 ## Running it

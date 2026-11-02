@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Import spreadsheets{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Import insurer spreadsheets</h1></div>
+
+<section class="card">
+  <p>Upload the Excel reports you get from the insurance company. The app recognises:</p>
+  <ul>
+    <li><strong>Renewal listings</strong> (LOB, POLICY, RENEWAL DATE, CLIENT NAME…): adds or updates clients and policies, sets each renewal date and the premium due, and creates a reminder for any <em>outstanding premium</em>.</li>
+    <li><strong>Commission statements</strong> (ProdCode, InvPrefix, PolicyNo, InvoiceNo, Comm%, CommAmt…): records each commission line and fills in policy terms and commission rates.</li>
+  </ul>
+  <p class="muted">You can import the same file more than once. Clients are matched by name, policies by policy number and commissions by invoice number, so nothing is doubled up.</p>
+  <form method="post" enctype="multipart/form-data" class="stack" style="max-width:560px">
+    <label><span>Spreadsheets (.xls, .xlsx or .csv): you can select several</span>
+      <input type="file" name="files" accept=".xls,.xlsx,.csv" multiple required></label>
+    <label><span>Insurance company for new policies in these files</span>
+      <input name="carrier" value="{{ carrier }}"></label>
+    <button class="btn primary">Import</button>
+  </form>
+</section>
+
+{% if report %}
+<section class="card">
+  <h2>Import results</h2>
+  <div class="stats">
+    {% for kind, n in report.counts.items() %}<div class="stat {{ 'alert' if kind == 'Warning' }}"><span>{{ n }}</span>{{ kind }}</div>{% endfor %}
+  </div>
+  <table class="list">
+    <thead><tr><th>What happened</th><th>Details</th></tr></thead>
+    <tbody>
+    {% for kind, msg, endpoint, obj_id in report.lines %}
+      <tr class="{{ 'row-overdue' if kind in ('Warning', 'Reminder added') }}">
+        <td><strong>{{ kind }}</strong></td>
+        <td>{% if endpoint %}<a href="{{ url_for(endpoint, **{('client_id' if endpoint == 'client_detail' else 'policy_id'): obj_id}) }}">{{ msg }}</a>{% else %}{{ msg }}{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p><a class="btn" href="{{ url_for('reminders') }}">See reminders</a> <a class="btn" href="{{ url_for('commissions') }}">See commissions</a> <a class="btn" href="{{ url_for('calendar_view') }}">See calendar</a></p>
+</section>
+{% endif %}
+{% endblock %}

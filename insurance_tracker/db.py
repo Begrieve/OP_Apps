@@ -76,6 +76,25 @@ CREATE TABLE IF NOT EXISTS reminders (
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS commissions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    policy_id INTEGER REFERENCES policies(id) ON DELETE SET NULL,
+    client_name TEXT,
+    statement_month TEXT,
+    invoice_no TEXT UNIQUE,
+    class_code TEXT,
+    invoice_date TEXT,
+    term_from TEXT,
+    term_to TEXT,
+    rate REAL,
+    amount REAL NOT NULL,
+    producer_code TEXT,
+    source_file TEXT,
+    notes TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_commissions_policy ON commissions(policy_id);
 CREATE INDEX IF NOT EXISTS idx_policies_client ON policies(client_id);
 CREATE INDEX IF NOT EXISTS idx_policies_due ON policies(next_due_date);
 CREATE INDEX IF NOT EXISTS idx_payments_policy ON payments(policy_id);

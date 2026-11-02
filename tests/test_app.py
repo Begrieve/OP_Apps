@@ -93,8 +93,53 @@ def test_ics_export(client):
 
 def test_validation_and_cascade_delete(client):
     r = client.post("/clients/new", data={"first_name": ""})
-    assert b"First name is required" in r.data
+    assert b"Last name / business name is required" in r.data
     cid = make_client(client)
     make_policy(client, cid)
     client.post(f"/clients/{cid}/delete")
     assert b"No policies match" in client.get("/policies").data
+
+
+RENEWAL_CSV = """LOB,POLICY,RENEWAL DATE,CLIENT NAME,ADDRESSEE,ADDRESS 1 ,ADDRESS 2,ADDRESS 3,PHONE ,SUM INSURED,GROSS PREMIUM,ADDIT. PREM.,NET PREM includes tax,DISCOUNTS,TYPE OF COVER,MATE/MAX,RISK,MORTGAGEE,REMARKS
+F,11111,20261121,ACME HOLDINGS LIMITED,ACME HOLDINGS LIMITED,#1 MAIN STREET,SAN FERNANDO,,6221234,1000000,4000,0,4240.5555,,COMPREHENSIVE BLDG - FIRE,,PDH $1M,,
+A,22222,20261115,JOHN Q. PUBLIC,MR. JOHN Q. PUBLIC,#2 SIDE ROAD,ARIMA,,0,100,2000,0,1500,45.00% N.C.D.,PRIVATE CAR T P ONLY,Automax,PAB-1234 NISSAN TIIDA,,
+,PCP 999 000 000,,JANE DOE,,,,,,,,,,,,,PEF-0001,,POLICY HAS AN OUTSTANDING PREMIUM. NO RENEWAL TERMS.
+"""
+
+COMMISSION_CSV = """ProdCode,InvPrefix,PolicyNo,InvoiceNo,InvDate,TermFrom,TermTo,ClientName,Comm%,CommAmt,NetDue
+4815,HOC,11111,900001,20261029,20261121,20271120,ACME HOLDINGS LIMITED,12.5,500,-500
+4815,PCL,33333,900002,20261001,20261010,20271009,MARY  SMITH,15,300,-300
+,,,,,,,,,800,-800
+"""
+
+
+def upload(client, name, body):
+    import io
+    return client.post("/import", data={"carrier": "Test Insurer",
+                                        "files": [(io.BytesIO(body.encode()), name)]},
+                       content_type="multipart/form-data")
+
+
+def test_import_renewal_and_commission(client):
+    r = upload(client, "Commissions for October 2026.csv", COMMISSION_CSV)
+    assert r.status_code == 200 and b"Commission added" in r.data
+    r = upload(client, "November 2026 Renewal Listing.csv", RENEWAL_CSV)
+    html = r.get_data(as_text=True)
+    assert "already renewed to 2027-11-20" in html           # commission showed it renewed
+    assert "OUTSTANDING PREMIUM" in html                    # reminder created
+
+    clients = client.get("/clients").get_data(as_text=True)
+    assert "Acme Holdings Limited" in clients and "Public, John Q." in clients
+    assert "Acme Holdings Limited," not in clients          # business: no trailing comma
+    reminders = client.get("/reminders").get_data(as_text=True)
+    assert "Collect outstanding premium" in reminders
+    assert "Nov 15, 2026" in reminders                       # John Q. Public renewal payment due
+    comm = client.get("/commissions").get_data(as_text=True)
+    assert "October 2026" in comm and "$800.00" in comm
+
+    # Importing again must not duplicate anything.
+    r = upload(client, "Commissions for October 2026.csv", COMMISSION_CSV)
+    assert b"Already imported" in r.data and b"Commission added" not in r.data
+    r = upload(client, "November 2026 Renewal Listing.csv", RENEWAL_CSV)
+    assert b"Policy added" not in r.data and b"Client added" not in r.data
+    assert client.get("/policies").get_data(as_text=True).count("Acme Holdings Limited") == 1

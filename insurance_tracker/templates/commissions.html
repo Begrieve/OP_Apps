@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Commissions{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Commissions</h1>
+  <div class="head-actions"><a class="btn primary" href="{{ url_for('import_view') }}">Import a statement</a></div>
+</div>
+
+{% if by_month %}
+<section class="stats">
+  {% for m in by_month %}
+  <a class="stat" href="{{ url_for('commissions', month=m.statement_month) }}"><span>{{ m.total|money }}</span>{{ m.statement_month|monthname }} · {{ m.n }} lines</a>
+  {% endfor %}
+</section>
+{% endif %}
+
+<form class="filters">
+  <select name="month" onchange="this.form.submit()">
+    <option value="">All statements</option>
+    {% for m in months %}<option value="{{ m }}" {{ 'selected' if m == month }}>{{ m|monthname }}</option>{% endfor %}
+  </select>
+  {% if month %}<a href="{{ url_for('commissions') }}">Show all</a>{% endif %}
+</form>
+
+<section class="card">
+{% if rows %}
+<table class="list">
+  <thead><tr><th>Statement</th><th>Client</th><th>Policy</th><th>Invoice</th><th>Term</th><th class="num">Rate</th><th class="num">Commission</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+  <tr>
+    <td>{{ r.statement_month|monthname }}</td>
+    <td>{% if r.client_id %}<a href="{{ url_for('client_detail', client_id=r.client_id) }}">{{ r.client_name }}</a>{% else %}{{ r.client_name }}{% endif %}</td>
+    <td>{% if r.policy_id %}<a href="{{ url_for('policy_detail', policy_id=r.policy_id) }}">#{{ r.policy_number }}</a><div class="muted">{{ r.class_code }} · {{ r.policy_type }}</div>{% else %}—{% endif %}</td>
+    <td>{{ r.invoice_no }}<div class="muted">{{ r.invoice_date|nicedate }}</div></td>
+    <td>{{ r.term_from|nicedate }} –<br>{{ r.term_to|nicedate }}</td>
+    <td class="num">{{ r.rate|plainnum }}%</td>
+    <td class="num">{{ r.amount|money }}</td>
+  </tr>
+  {% endfor %}
+  <tr><td colspan="6"><strong>Total</strong></td><td class="num"><strong>{{ total|money }}</strong></td></tr>
+  </tbody>
+</table>
+{% else %}<p class="empty">No commissions recorded yet. <a href="{{ url_for('import_view') }}">Import a commission statement.</a></p>{% endif %}
+</section>
+{% endblock %}
