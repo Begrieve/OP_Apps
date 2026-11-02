@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Search{% endblock %}
+{% block content %}
+<h1>Search results for “{{ q }}”</h1>
+<section class="card">
+  <h2>Clients <span class="count">{{ clients|length }}</span></h2>
+  {% if clients %}<ul class="agenda">{% for c in clients %}<li><a href="{{ url_for('client_detail', client_id=c.id) }}"><strong>{{ c.last_name }}, {{ c.first_name }}</strong> <span class="muted">{{ c.phone or '' }} {{ c.email or '' }}</span></a></li>{% endfor %}</ul>{% else %}<p class="empty">No clients found.</p>{% endif %}
+  <h2>Policies <span class="count">{{ policies|length }}</span></h2>
+  {% if policies %}<ul class="agenda">{% for p in policies %}<li><a href="{{ url_for('policy_detail', policy_id=p.id) }}"><strong>{{ p.policy_type }}</strong> — {{ p.first_name }} {{ p.last_name }} <span class="muted">{{ p.carrier or '' }} {% if p.policy_number %}#{{ p.policy_number }}{% endif %}</span></a></li>{% endfor %}</ul>{% else %}<p class="empty">No policies found.</p>{% endif %}
+</section>
+{% endblock %}

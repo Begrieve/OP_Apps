@@ -1,0 +1,73 @@
+{% macro remind_mail(p, kind='payment') -%}
+{%- if p.email -%}
+{%- if kind == 'payment' -%}
+mailto:{{ p.email }}?subject={{ ('Payment reminder: ' ~ p.policy_type ~ ' policy ' ~ (p.policy_number or ''))|urlencode }}&body={{ ('Hi ' ~ p.first_name ~ ',\n\nThis is a friendly reminder that your ' ~ p.policy_type ~ ' policy' ~ (' #' ~ p.policy_number if p.policy_number else '') ~ (' with ' ~ p.carrier if p.carrier else '') ~ ' has a payment of ' ~ (p.premium|money) ~ ' due ' ~ (p.next_due_date|nicedate) ~ '.\n\nPlease let me know if you have any questions or need help making the payment.\n\nThank you!')|urlencode }}
+{%- else -%}
+mailto:{{ p.email }}?subject={{ ('Your ' ~ p.policy_type ~ ' policy renewal')|urlencode }}&body={{ ('Hi ' ~ p.first_name ~ ',\n\nYour ' ~ p.policy_type ~ ' policy' ~ (' #' ~ p.policy_number if p.policy_number else '') ~ ' renews on ' ~ (p.expiration_date|nicedate) ~ '. I would like to set up a quick review to make sure your coverage still fits your needs. What day works best for you?\n\nThank you!')|urlencode }}
+{%- endif -%}
+{%- endif -%}
+{%- endmacro %}
+
+{% macro payment_table(rows, overdue=false) %}
+<table class="list">
+  <thead><tr><th>Client</th><th>Policy</th><th>Due</th><th class="num">Amount</th><th>Contact</th><th></th></tr></thead>
+  <tbody>
+  {% for p in rows %}
+    <tr class="{{ 'row-overdue' if p.days < 0 }}">
+      <td><a href="{{ url_for('client_detail', client_id=p.client_id) }}">{{ p.first_name }} {{ p.last_name }}</a></td>
+      <td><a href="{{ url_for('policy_detail', policy_id=p.id) }}">{{ p.policy_type }}</a>{% if p.carrier %}<div class="muted">{{ p.carrier }}{% if p.policy_number %} · #{{ p.policy_number }}{% endif %}</div>{% endif %}</td>
+      <td>{{ p.next_due_date|nicedate }}<div class="{{ 'bad' if p.days < 0 else 'warn' if p.days <= 3 else 'muted' }}">{{ p.days|relday }}</div></td>
+      <td class="num">{{ p.premium|money }}</td>
+      <td>{% if p.phone %}<a href="tel:{{ p.phone }}">{{ p.phone }}</a>{% endif %}</td>
+      <td class="actions">
+        {% if p.email %}<a class="btn small ghost" href="{{ remind_mail(p) }}">Email reminder</a>{% endif %}
+        <a class="btn small" href="{{ url_for('policy_detail', policy_id=p.id) }}#pay">Record payment</a>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endmacro %}
+
+{% macro renewal_table(rows) %}
+<table class="list">
+  <thead><tr><th>Client</th><th>Policy</th><th>Renews</th><th class="num">Premium</th><th></th></tr></thead>
+  <tbody>
+  {% for p in rows %}
+    <tr>
+      <td><a href="{{ url_for('client_detail', client_id=p.client_id) }}">{{ p.first_name }} {{ p.last_name }}</a></td>
+      <td><a href="{{ url_for('policy_detail', policy_id=p.id) }}">{{ p.policy_type }}</a>{% if p.carrier %}<div class="muted">{{ p.carrier }}</div>{% endif %}</td>
+      <td>{{ p.expiration_date|nicedate }}<div class="{{ 'warn' if p.days <= 30 else 'muted' }}">{{ p.days|relday }}</div></td>
+      <td class="num">{{ p.premium|money }}{% if p.payment_frequency %}<div class="muted">{{ p.payment_frequency }}</div>{% endif %}</td>
+      <td class="actions">
+        {% if p.email %}<a class="btn small ghost" href="{{ remind_mail(p, 'renewal') }}">Email client</a>{% endif %}
+        <a class="btn small" href="{{ url_for('meeting_new', client_id=p.client_id) }}">Schedule review</a>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endmacro %}
+
+{% macro task_list(rows, next_url) %}
+<ul class="tasks">
+{% for r in rows %}
+  <li class="{{ 'done' if r.done }}">
+    <form method="post" action="{{ url_for('reminder_toggle', rid=r.id) }}">
+      <input type="hidden" name="next" value="{{ next_url }}">
+      <button class="check" title="Mark {{ 'not done' if r.done else 'done' }}">{{ '✓' if r.done else '' }}</button>
+    </form>
+    <div class="grow">
+      <strong>{{ r.title }}</strong>
+      {% if r.first_name %} · <a href="{{ url_for('client_detail', client_id=r.client_id) }}">{{ r.first_name }} {{ r.last_name }}</a>{% endif %}
+      <div class="{{ 'bad' if r.days < 0 and not r.done else 'warn' if r.days == 0 and not r.done else 'muted' }}">{{ r.due_date|nicedate }}{% if not r.done %} · {{ r.days|relday }}{% endif %}</div>
+      {% if r.notes %}<div class="muted">{{ r.notes }}</div>{% endif %}
+    </div>
+    <form method="post" action="{{ url_for('reminder_delete', rid=r.id) }}" onsubmit="return confirm('Delete this reminder?')">
+      <input type="hidden" name="next" value="{{ next_url }}">
+      <button class="link-btn">Delete</button>
+    </form>
+  </li>
+{% endfor %}
+</ul>
+{% endmacro %}

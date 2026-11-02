@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Policies{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Policies <span class="count">{{ policies|length }}</span></h1>
+  <div class="head-actions"><a class="btn primary" href="{{ url_for('policy_new') }}">+ New policy</a></div>
+</div>
+<form class="filters">
+  <select name="type" onchange="this.form.submit()">
+    <option value="">All types</option>
+    {% for t in types %}<option {{ 'selected' if t == ptype }}>{{ t }}</option>{% endfor %}
+  </select>
+  <select name="status" onchange="this.form.submit()">
+    <option value="">All statuses</option>
+    {% for s in statuses %}<option {{ 'selected' if s == status }}>{{ s }}</option>{% endfor %}
+  </select>
+  {% if ptype or status %}<a href="{{ url_for('policies') }}">Clear filters</a>{% endif %}
+</form>
+<section class="card">
+{% if policies %}
+<table class="list">
+  <thead><tr><th>Client</th><th>Type</th><th>Carrier / #</th><th>Status</th><th class="num">Premium</th><th>Next due</th><th>Renews</th></tr></thead>
+  <tbody>
+  {% for p in policies %}
+  <tr>
+    <td><a href="{{ url_for('client_detail', client_id=p.client_id) }}">{{ p.last_name }}, {{ p.first_name }}</a></td>
+    <td><a href="{{ url_for('policy_detail', policy_id=p.id) }}"><strong>{{ p.policy_type }}</strong></a></td>
+    <td>{{ p.carrier or '' }}{% if p.policy_number %}<div class="muted">#{{ p.policy_number }}</div>{% endif %}</td>
+    <td><span class="pill s-{{ p.status|lower }}">{{ p.status }}</span></td>
+    <td class="num">{{ p.premium|money }}<div class="muted">{{ p.payment_frequency or '' }}</div></td>
+    <td class="{{ 'bad' if p.status == 'Active' and p.next_due_date and p.next_due_date < today.isoformat() }}">{{ p.next_due_date|nicedate }}</td>
+    <td>{{ p.expiration_date|nicedate }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p class="empty">No policies match.</p>{% endif %}
+</section>
+{% endblock %}

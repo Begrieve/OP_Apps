@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% from "_macros.html" import payment_table, renewal_table, task_list %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ today.strftime('%A, %B %d, %Y') }}</h1>
+  <div class="head-actions">
+    <a class="btn" href="{{ url_for('client_new') }}">+ Client</a>
+    <a class="btn" href="{{ url_for('policy_new') }}">+ Policy</a>
+    <a class="btn" href="{{ url_for('meeting_new') }}">+ Meeting</a>
+  </div>
+</div>
+
+<section class="stats">
+  <div class="stat"><span>{{ stats.clients }}</span>Clients</div>
+  <div class="stat"><span>{{ stats.active }}</span>Active policies</div>
+  <div class="stat"><span>{{ stats.annual_premium|money }}</span>Annual premium in force</div>
+  <div class="stat"><span>{{ stats.annual_commission|money }}</span>Est. annual commission</div>
+  <div class="stat {{ 'alert' if overdue }}"><span>{{ overdue|length }}</span>Overdue payments</div>
+</section>
+
+<div class="grid2">
+  <section class="card">
+    <h2>Payments overdue <span class="count bad-bg">{{ overdue|length }}</span></h2>
+    {% if overdue %}{{ payment_table(overdue) }}{% else %}<p class="empty">No overdue payments. 🎉</p>{% endif %}
+    <h2>Payments due in the next 14 days <span class="count">{{ upcoming|length }}</span></h2>
+    {% if upcoming %}{{ payment_table(upcoming) }}{% else %}<p class="empty">Nothing due in the next two weeks.</p>{% endif %}
+  </section>
+
+  <aside>
+    <section class="card">
+      <h2>Next 7 days on the calendar</h2>
+      {% if meetings %}
+      <ul class="agenda">
+        {% for m in meetings %}
+        <li><a href="{{ url_for('meeting_edit', meeting_id=m.id) }}">
+          <span class="when">{{ m.date|nicedate }}{% if m.start_time %} · {{ m.start_time|nicetime }}{% endif %}</span>
+          <strong>{{ m.title }}</strong>{% if m.first_name %} — {{ m.first_name }} {{ m.last_name }}{% endif %}
+          {% if m.location %}<div class="muted">{{ m.location }}</div>{% endif %}
+        </a></li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="empty">No meetings this week.</p>{% endif %}
+      <a class="btn small" href="{{ url_for('calendar_view') }}">Open calendar</a>
+    </section>
+    <section class="card">
+      <h2>To-do reminders</h2>
+      {% if tasks %}{{ task_list(tasks, url_for('dashboard')) }}{% else %}<p class="empty">No reminders due this week.</p>{% endif %}
+      <a class="btn small" href="{{ url_for('reminders') }}#add">+ Add reminder</a>
+    </section>
+  </aside>
+</div>
+
+<section class="card">
+  <h2>Renewals in the next 60 days <span class="count">{{ renewals|length }}</span></h2>
+  {% if renewals %}{{ renewal_table(renewals) }}{% else %}<p class="empty">No renewals coming up.</p>{% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% from "_macros.html" import task_list %}
+{% block title %}{{ client.first_name }} {{ client.last_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ client.first_name }} {{ client.last_name }}</h1>
+  <div class="head-actions">
+    <a class="btn" href="{{ url_for('policy_new', client_id=client.id) }}">+ Policy</a>
+    <a class="btn" href="{{ url_for('meeting_new', client_id=client.id) }}">+ Meeting</a>
+    <a class="btn ghost" href="{{ url_for('client_edit', client_id=client.id) }}">Edit client</a>
+  </div>
+</div>
+<div class="grid2">
+  <section class="card">
+    <h2>Policies</h2>
+    {% if policies %}
+    <table class="list">
+      <thead><tr><th>Type</th><th>Carrier / #</th><th>Status</th><th class="num">Premium</th><th>Next due</th><th>Renews</th></tr></thead>
+      <tbody>
+      {% for p in policies %}
+      <tr>
+        <td><a href="{{ url_for('policy_detail', policy_id=p.id) }}"><strong>{{ p.policy_type }}</strong></a></td>
+        <td>{{ p.carrier or '' }}{% if p.policy_number %}<div class="muted">#{{ p.policy_number }}</div>{% endif %}</td>
+        <td><span class="pill s-{{ p.status|lower }}">{{ p.status }}</span></td>
+        <td class="num">{{ p.premium|money }}<div class="muted">{{ p.payment_frequency or '' }}</div></td>
+        <td class="{{ 'bad' if p.status == 'Active' and p.next_due_date and p.next_due_date < today.isoformat() }}">{{ p.next_due_date|nicedate }}</td>
+        <td>{{ p.expiration_date|nicedate }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="empty">No policies yet. <a href="{{ url_for('policy_new', client_id=client.id) }}">Add one.</a></p>{% endif %}
+
+    <h2>Meetings</h2>
+    {% if meetings %}
+    <ul class="agenda">
+      {% for m in meetings %}
+      <li><a href="{{ url_for('meeting_edit', meeting_id=m.id) }}">
+        <span class="when">{{ m.date|nicedate }}{% if m.start_time %} · {{ m.start_time|nicetime }}{% endif %}</span>
+        <strong>{{ m.title }}</strong> <span class="muted">{{ m.meeting_type or '' }}</span>
+        {% if m.notes %}<div class="muted">{{ m.notes }}</div>{% endif %}
+      </a></li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="empty">No meetings recorded.</p>{% endif %}
+  </section>
+  <aside>
+    <section class="card info">
+      <h2>Contact</h2>
+      <dl>
+        {% if client.phone %}<dt>Phone</dt><dd><a href="tel:{{ client.phone }}">{{ client.phone }}</a></dd>{% endif %}
+        {% if client.alt_phone %}<dt>Alt. phone</dt><dd><a href="tel:{{ client.alt_phone }}">{{ client.alt_phone }}</a></dd>{% endif %}
+        {% if client.email %}<dt>Email</dt><dd><a href="mailto:{{ client.email }}">{{ client.email }}</a></dd>{% endif %}
+        {% if client.preferred_contact %}<dt>Prefers</dt><dd>{{ client.preferred_contact }}</dd>{% endif %}
+        {% if client.address or client.city %}<dt>Address</dt><dd>{{ client.address or '' }}<br>{{ client.city or '' }}{% if client.state %}, {{ client.state }}{% endif %} {{ client.zip or '' }}</dd>{% endif %}
+        {% if client.dob %}<dt>Date of birth</dt><dd>{{ client.dob|nicedate }}</dd>{% endif %}
+      </dl>
+      {% if client.notes %}<h3>Notes</h3><p class="pre">{{ client.notes }}</p>{% endif %}
+    </section>
+    <section class="card">
+      <h2>Reminders</h2>
+      {% if reminders %}{{ task_list(reminders, url_for('client_detail', client_id=client.id)) }}{% endif %}
+      <form method="post" action="{{ url_for('reminders') }}" class="inline-form">
+        <input type="hidden" name="client_id" value="{{ client.id }}">
+        <input type="hidden" name="next" value="{{ url_for('client_detail', client_id=client.id) }}">
+        <input name="title" placeholder="e.g. Call about life quote" required>
+        <input type="date" name="due_date" value="{{ today.isoformat() }}" required>
+        <button class="btn small">Add</button>
+      </form>
+    </section>
+  </aside>
+</div>
+{% endblock %}

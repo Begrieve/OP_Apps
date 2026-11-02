@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Clients{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Clients <span class="count">{{ clients|length }}</span></h1>
+  <div class="head-actions"><a class="btn primary" href="{{ url_for('client_new') }}">+ New client</a></div>
+</div>
+<section class="card">
+{% if clients %}
+<table class="list">
+  <thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>City</th><th class="num">Policies</th></tr></thead>
+  <tbody>
+  {% for c in clients %}
+  <tr>
+    <td><a href="{{ url_for('client_detail', client_id=c.id) }}"><strong>{{ c.last_name }}, {{ c.first_name }}</strong></a></td>
+    <td>{% if c.phone %}<a href="tel:{{ c.phone }}">{{ c.phone }}</a>{% endif %}</td>
+    <td>{% if c.email %}<a href="mailto:{{ c.email }}">{{ c.email }}</a>{% endif %}</td>
+    <td>{{ c.city or '' }}{% if c.state %}, {{ c.state }}{% endif %}</td>
+    <td class="num">{{ c.active_count or 0 }} active / {{ c.policy_count }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p class="empty">No clients yet. <a href="{{ url_for('client_new') }}">Add your first client.</a></p>{% endif %}
+</section>
+{% endblock %}

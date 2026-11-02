@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Insurance Tracker{% endblock %} · Broker Desk</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="{{ url_for('dashboard') }}">Broker Desk</a>
+  <nav>
+    <a href="{{ url_for('dashboard') }}" class="{{ 'on' if request.endpoint == 'dashboard' }}">Dashboard</a>
+    <a href="{{ url_for('clients') }}" class="{{ 'on' if request.endpoint and request.endpoint.startswith('client') }}">Clients</a>
+    <a href="{{ url_for('policies') }}" class="{{ 'on' if request.endpoint and request.endpoint.startswith('polic') }}">Policies</a>
+    <a href="{{ url_for('reminders') }}" class="{{ 'on' if request.endpoint and request.endpoint.startswith('reminder') }}">Reminders{% if nav_alert_count %} <span class="badge">{{ nav_alert_count }}</span>{% endif %}</a>
+    <a href="{{ url_for('calendar_view') }}" class="{{ 'on' if request.endpoint in ('calendar_view', 'meetings', 'meeting_new', 'meeting_edit') }}">Calendar</a>
+  </nav>
+  <form class="search" action="{{ url_for('search') }}">
+    <input type="search" name="q" placeholder="Search clients, policy #, carrier…" value="{{ q or '' }}">
+  </form>
+</header>
+<main>
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% for cat, m in msgs %}<div class="flash {{ cat }}">{{ m }}</div>{% endfor %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% from "_macros.html" import remind_mail %}
+{% block title %}{{ p.policy_type }} – {{ p.first_name }} {{ p.last_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ p.policy_type }} <span class="pill s-{{ p.status|lower }}">{{ p.status }}</span></h1>
+  <div class="head-actions">
+    {% if p.email and p.next_due_date %}<a class="btn ghost" href="{{ remind_mail(p) }}">Email payment reminder</a>{% endif %}
+    <a class="btn ghost" href="{{ url_for('policy_edit', policy_id=p.id) }}">Edit policy</a>
+  </div>
+</div>
+<p class="sub">Client: <a href="{{ url_for('client_detail', client_id=p.client_id) }}">{{ p.first_name }} {{ p.last_name }}</a>
+  {% if p.phone %} · <a href="tel:{{ p.phone }}">{{ p.phone }}</a>{% endif %}
+  {% if p.email %} · <a href="mailto:{{ p.email }}">{{ p.email }}</a>{% endif %}</p>
+
+<div class="grid2">
+  <section class="card info">
+    <h2>Policy details</h2>
+    <dl class="cols">
+      <dt>Policy number</dt><dd>{{ p.policy_number or '—' }}</dd>
+      <dt>Carrier</dt><dd>{{ p.carrier or '—' }}</dd>
+      <dt>Effective</dt><dd>{{ p.effective_date|nicedate or '—' }}</dd>
+      <dt>Expires / renews</dt><dd>{{ p.expiration_date|nicedate or '—' }}</dd>
+      <dt>Premium</dt><dd>{{ p.premium|money or '—' }} {{ p.payment_frequency or '' }}</dd>
+      <dt>Payment method</dt><dd>{{ p.payment_method or '—' }}</dd>
+      <dt>Coverage limit</dt><dd>{{ p.coverage_amount|money or '—' }}</dd>
+      <dt>Deductible</dt><dd>{{ p.deductible|money or '—' }}</dd>
+      <dt>Commission</dt><dd>{% if p.commission_rate is not none %}{{ p.commission_rate|plainnum }}%{% else %}—{% endif %}</dd>
+    </dl>
+    {% if p.insured_item %}<h3>Insured item</h3><p class="pre">{{ p.insured_item }}</p>{% endif %}
+    {% if p.beneficiaries %}<h3>Beneficiaries / additional insureds</h3><p class="pre">{{ p.beneficiaries }}</p>{% endif %}
+    {% if p.notes %}<h3>Notes</h3><p class="pre">{{ p.notes }}</p>{% endif %}
+  </section>
+
+  <aside>
+    <section class="card due {{ 'due-bad' if days_due is not none and days_due < 0 and p.status == 'Active' }}">
+      <h2>Next payment</h2>
+      {% if p.next_due_date %}
+        <div class="big">{{ p.next_due_date|nicedate }}</div>
+        <div class="{{ 'bad' if days_due < 0 else 'muted' }}">{{ days_due|relday }}</div>
+      {% else %}<p class="empty">No payment scheduled.</p>{% endif %}
+    </section>
+    <section class="card" id="pay">
+      <h2>Record a payment</h2>
+      <form method="post" action="{{ url_for('payment_add', policy_id=p.id) }}" class="stack">
+        <label><span>Date paid</span><input type="date" name="paid_on" value="{{ today.isoformat() }}" required></label>
+        <label><span>Amount ($)</span><input type="number" step="0.01" name="amount" value="{{ '%.2f' % p.premium if p.premium else '' }}" required></label>
+        <label><span>Method</span><select name="method">{% for m in methods %}<option value="{{ m }}" {{ 'selected' if m == p.payment_method }}>{{ m or '— select —' }}</option>{% endfor %}</select></label>
+        <label><span>Notes</span><input name="notes" placeholder="Check #, confirmation #…"></label>
+        <label class="check-row"><input type="checkbox" name="advance" value="1" checked> Move next due date forward one {{ (p.payment_frequency or 'period')|lower }} period</label>
+        <button class="btn primary">Save payment</button>
+      </form>
+    </section>
+  </aside>
+</div>
+
+<section class="card">
+  <h2>Payment history <span class="muted">· total {{ total_paid|money }}</span></h2>
+  {% if payments %}
+  <table class="list">
+    <thead><tr><th>Date</th><th class="num">Amount</th><th>Method</th><th>Notes</th><th></th></tr></thead>
+    <tbody>
+    {% for pay in payments %}
+    <tr>
+      <td>{{ pay.paid_on|nicedate }}</td><td class="num">{{ pay.amount|money }}</td>
+      <td>{{ pay.method or '' }}</td><td>{{ pay.notes or '' }}</td>
+      <td class="actions"><form method="post" action="{{ url_for('payment_delete', payment_id=pay.id) }}" onsubmit="return confirm('Remove this payment?')"><button class="link-btn">Remove</button></form></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="empty">No payments recorded yet.</p>{% endif %}
+</section>
+{% endblock %}

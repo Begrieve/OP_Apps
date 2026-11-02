@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Calendar{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ month_name }} {{ year }}</h1>
+  <div class="head-actions">
+    <a class="btn ghost" href="{{ url_for('calendar_view', year=prev[0], month=prev[1]) }}">‹ Prev</a>
+    <a class="btn ghost" href="{{ url_for('calendar_view') }}">Today</a>
+    <a class="btn ghost" href="{{ url_for('calendar_view', year=next[0], month=next[1]) }}">Next ›</a>
+    <a class="btn ghost" href="{{ url_for('meetings') }}">Upcoming list</a>
+    <a class="btn primary" href="{{ url_for('meeting_new') }}">+ New meeting</a>
+  </div>
+</div>
+<div class="legend">
+  <span class="ev meeting">Meeting</span><span class="ev payment">Payment due</span>
+  <span class="ev renewal">Renewal</span><span class="ev task">Reminder</span>
+</div>
+<div class="cal">
+  {% for wd in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] %}<div class="cal-h">{{ wd }}</div>{% endfor %}
+  {% for week in weeks %}{% for d in week %}
+    {% set iso = d.isoformat() %}
+    <div class="cal-d {{ 'other' if d.month != month }} {{ 'is-today' if d == today }}">
+      <a class="cal-num" href="{{ url_for('meeting_new', date=iso) }}" title="Add meeting on this day">{{ d.day }} <span class="plus">+</span></a>
+      {% for e in events.get(iso, []) %}
+        <a class="ev {{ e.kind }}" href="{{ e.link }}" title="{{ e.label }}">{% if e.time %}<b>{{ e.time|nicetime }}</b> {% endif %}{{ e.label }}</a>
+      {% endfor %}
+    </div>
+  {% endfor %}{% endfor %}
+</div>
+{% endblock %}

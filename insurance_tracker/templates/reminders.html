@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% from "_macros.html" import payment_table, renewal_table, task_list %}
+{% block title %}Reminders{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Reminders</h1>
+  <form class="filters">
+    <label>Show payments due within
+      <select name="days" onchange="this.form.submit()">
+        {% for d in [7, 14, 30, 60, 90] %}<option value="{{ d }}" {{ 'selected' if d == days }}>{{ d }} days</option>{% endfor %}
+      </select>
+    </label>
+  </form>
+</div>
+
+<section class="card">
+  <h2>Overdue payments <span class="count bad-bg">{{ overdue|length }}</span></h2>
+  <p class="muted">Clients with an active policy whose payment date has passed. Call or email them, then record the payment.</p>
+  {% if overdue %}{{ payment_table(overdue) }}{% else %}<p class="empty">No overdue payments.</p>{% endif %}
+</section>
+
+<section class="card">
+  <h2>Payments due in the next {{ days }} days <span class="count">{{ upcoming|length }}</span></h2>
+  {% if upcoming %}{{ payment_table(upcoming) }}{% else %}<p class="empty">Nothing due.</p>{% endif %}
+</section>
+
+<section class="card">
+  <h2>Renewals in the next 60 days <span class="count">{{ renewals|length }}</span></h2>
+  {% if renewals %}{{ renewal_table(renewals) }}{% else %}<p class="empty">No renewals coming up.</p>{% endif %}
+</section>
+
+<section class="card" id="add">
+  <h2>My to-do reminders</h2>
+  <form method="post" class="inline-form">
+    <input name="title" placeholder="What do you need to remember?" required>
+    <input type="date" name="due_date" value="{{ default_due }}" required>
+    <select name="client_id"><option value="">— no client —</option>{% for c in clients %}<option value="{{ c.id }}">{{ c.last_name }}, {{ c.first_name }}</option>{% endfor %}</select>
+    <input name="notes" placeholder="Notes (optional)">
+    <button class="btn primary">Add reminder</button>
+  </form>
+  {% if tasks %}{{ task_list(tasks, url_for('reminders')) }}{% else %}<p class="empty">No reminders yet.</p>{% endif %}
+</section>
+{% endblock %}

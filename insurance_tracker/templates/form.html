@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ title }}</h1>
+  <div class="head-actions">{% for label, href in extra_links %}<a class="btn ghost" href="{{ href }}">{{ label }}</a>{% endfor %}</div>
+</div>
+{% for e in errors %}<div class="flash error">{{ e }}</div>{% endfor %}
+<form method="post" class="card form">
+  <div class="fields">
+  {% for name, label, ftype, opts, required in fields %}
+    <label class="{{ 'wide' if ftype == 'textarea' }}">
+      <span>{{ label }}{% if required %} *{% endif %}</span>
+      {% set v = values.get(name) %}
+      {% if ftype == 'textarea' %}
+        <textarea name="{{ name }}" rows="3">{{ v or '' }}</textarea>
+      {% elif ftype == 'select' %}
+        <select name="{{ name }}" {{ 'required' if required }}>
+          {% for o in opts %}<option value="{{ o }}" {{ 'selected' if v == o }}>{{ o or '—' }}</option>{% endfor %}
+        </select>
+      {% elif ftype in ('client', 'client_optional') %}
+        <select name="{{ name }}" {{ 'required' if required }}>
+          <option value="">{{ '— choose a client —' if required else '— none —' }}</option>
+          {% for c in clients %}<option value="{{ c.id }}" {{ 'selected' if v == c.id }}>{{ c.last_name }}, {{ c.first_name }}</option>{% endfor %}
+        </select>
+        {% if ftype == 'client' and not clients %}<small>No clients yet — <a href="{{ url_for('client_new') }}">add one first</a>.</small>{% endif %}
+      {% else %}
+        <input type="{{ ftype }}" name="{{ name }}" value="{{ '' if v is none else (v|plainnum if v is number else v) }}" {{ 'required' if required }} {{ 'step=0.01' if ftype == 'number' }}>
+      {% endif %}
+    </label>
+  {% endfor %}
+  </div>
+  <div class="form-actions">
+    <button class="btn primary">Save</button>
+    <a class="btn ghost" href="javascript:history.back()">Cancel</a>
+  </div>
+</form>
+{% if delete_url %}
+<form method="post" action="{{ delete_url }}" onsubmit="return confirm('Delete permanently? This cannot be undone.')">
+  <button class="btn danger">Delete</button>
+</form>
+{% endif %}
+{% endblock %}

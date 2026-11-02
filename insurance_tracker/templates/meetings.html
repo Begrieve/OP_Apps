@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Upcoming meetings{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Upcoming meetings</h1>
+  <div class="head-actions"><a class="btn ghost" href="{{ url_for('calendar_view') }}">Month view</a><a class="btn primary" href="{{ url_for('meeting_new') }}">+ New meeting</a></div>
+</div>
+<section class="card">
+{% if meetings %}
+<table class="list">
+  <thead><tr><th>When</th><th>Meeting</th><th>Client</th><th>Where</th><th></th></tr></thead>
+  <tbody>
+  {% for m in meetings %}
+  <tr>
+    <td>{{ m.date|nicedate }}<div class="muted">{{ m.start_time|nicetime }}{% if m.end_time %} – {{ m.end_time|nicetime }}{% endif %}</div></td>
+    <td><a href="{{ url_for('meeting_edit', meeting_id=m.id) }}"><strong>{{ m.title }}</strong></a><div class="muted">{{ m.meeting_type or '' }}</div></td>
+    <td>{% if m.client_id %}<a href="{{ url_for('client_detail', client_id=m.client_id) }}">{{ m.first_name }} {{ m.last_name }}</a>{% endif %}</td>
+    <td>{{ m.location or '' }}</td>
+    <td class="actions"><a class="btn small ghost" href="{{ url_for('meeting_ics', meeting_id=m.id) }}">.ics</a></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p class="empty">No upcoming meetings.</p>{% endif %}
+</section>
+{% endblock %}
