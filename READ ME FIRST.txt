@@ -90,11 +90,43 @@ everything again, but that replaces what's here).
 
 7. START BROKER DESK AUTOMATICALLY (optional)
 ---------------------------------------------
-* WINDOWS: press Windows+R, type  shell:startup  and press Enter. Right-click
-  "Start Broker Desk.bat", choose "Create shortcut", and move the shortcut into the
-  folder that opened.
-* MAC: System Settings > General > Login Items > "+" and choose
-  "Start Broker Desk.command".
+WINDOWS (do this once; Broker Desk then starts each time you sign in to Windows)
+
+  Step 1 - Open the Startup folder
+    Press the Windows key + R. In the small "Run" box, type  shell:startup  and
+    press Enter. A folder window opens. Leave it open.
+
+  Step 2 - Put a shortcut to Broker Desk in it
+    In another window, open your BrokerDesk folder (for example in Documents).
+    Right-click  "Start Broker Desk.bat"  and choose  Show more options >
+    Create shortcut  (on Windows 10 just  Create shortcut ).
+    Drag the new shortcut into the Startup folder from step 1.
+
+  Step 3 - Optional: start it minimised (no black window popping up)
+    In the Startup folder, right-click the shortcut > Properties. Next to "Run",
+    choose  Minimized , then click OK.
+
+  Step 4 - Test it
+    Restart the computer and sign in. After a few seconds Broker Desk starts and
+    your browser opens on it.
+
+  Good to know
+    * Don't want the browser to open by itself each time? Open  data\config.json  in
+      Notepad, change  "open_browser": true  to  "open_browser": false  and save.
+      Broker Desk still starts; open your bookmark when you need it.
+    * Don't move or rename the BrokerDesk folder afterwards, or the shortcut stops
+      working. If you do move it, delete the old shortcut and repeat step 2.
+    * It starts when you SIGN IN to Windows, not before. For other devices in the
+      office to use it, this computer must be on and signed in. When minimised, the
+      window sits in the taskbar; closing it stops Broker Desk.
+    * To stop it starting automatically: delete the shortcut from the Startup folder.
+    * If this is the office's main computer, stop it going to sleep:
+      Settings > System > Power > set sleep to "Never" when plugged in. Otherwise
+      other devices lose their connection while it sleeps.
+
+MAC
+    System Settings > General > Login Items > "+" and choose
+    "Start Broker Desk.command".
 
 
 8. LEAVING PythonAnywhere AND GitHub

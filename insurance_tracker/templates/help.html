@@ -346,6 +346,34 @@
   </ul>
   <p>Copy the <code>data</code> folder to a USB drive or cloud folder now and then. To install a newer version, unzip it and
      copy your <code>data</code> folder into it.</p>
+  <h3>Starting Broker Desk automatically on Windows</h3>
+  <p>Do this once. Broker Desk then starts by itself each time you sign in to Windows.</p>
+  <ol>
+    <li><strong>Open the Startup folder.</strong> Press the <strong>Windows key + R</strong>. In the small
+        <em>Run</em> box, type <code>shell:startup</code> and press <strong>Enter</strong>. A folder window opens.
+        Leave it open.</li>
+    <li><strong>Put a shortcut to Broker Desk in it.</strong> In another window, open your <strong>BrokerDesk</strong>
+        folder. Right-click <code>Start Broker Desk.bat</code> and choose <strong>Show more options → Create shortcut</strong>
+        (on Windows 10, just <strong>Create shortcut</strong>). Drag the new shortcut into the Startup folder.</li>
+    <li><strong>Optional: start it minimised.</strong> In the Startup folder, right-click the shortcut and choose
+        <strong>Properties</strong>. Next to <em>Run</em>, choose <strong>Minimized</strong>, then click <strong>OK</strong>.</li>
+    <li><strong>Test it.</strong> Restart the computer and sign in. After a few seconds Broker Desk starts and your
+        browser opens on it.</li>
+  </ol>
+  <ul>
+    <li><strong>Don't want the browser to open each time?</strong> Open <code>data\config.json</code> in Notepad and
+        change <code>"open_browser": true</code> to <code>"open_browser": false</code>.</li>
+    <li><strong>Don't move or rename the BrokerDesk folder</strong> afterwards, or the shortcut stops working. If you do
+        move it, delete the old shortcut and repeat step 2.</li>
+    <li>It starts when you <strong>sign in</strong> to Windows, not before. For other devices to use it, this computer
+        must be on and signed in. Closing the Broker Desk window stops it.</li>
+    <li><strong>To stop it starting automatically,</strong> delete the shortcut from the Startup folder.</li>
+    <li>If this is the office's main computer, set it never to sleep while plugged in
+        (<strong>Settings → System → Power</strong>). Otherwise other devices lose their connection while it sleeps.</li>
+  </ul>
+  <p>On a <strong>Mac</strong>: <strong>System Settings → General → Login Items → +</strong>, then choose
+     <code>Start Broker Desk.command</code>.</p>
+
   <h3>Changing or resetting the password</h3>
   <p>Change it under <strong>Reports → Letterhead &amp; business details → Change password</strong>. If you forget it:
      close Broker Desk, create an empty file named <code>reset-password.txt</code> in the <code>data</code> folder, start
