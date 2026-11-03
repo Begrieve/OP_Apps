@@ -64,6 +64,11 @@ TRACKER_DB=demo.db python seed_demo.py
 TRACKER_DB=demo.db python run.py
 ```
 
+## Putting it online
+
+To use it from anywhere without downloading anything, host it for free on PythonAnywhere.
+Follow [deploy/PYTHONANYWHERE.md](deploy/PYTHONANYWHERE.md).
+
 ## Backups
 
 All your data is in `insurance.db`. Copy that file somewhere safe (for example a USB drive
@@ -71,8 +76,8 @@ or cloud folder) to back it up. It is excluded from git so client information is
 
 ## Privacy note
 
-The app only listens on your own computer (`127.0.0.1`) and has no login. Don't put it on a
-shared or public server without adding authentication first. Client records hold personal information.
+When you run it yourself it only listens on your own computer (`127.0.0.1`). Online, it requires
+the password set in `TRACKER_PASSWORD` and refuses to start without one. Client records hold personal information.
 
 ## Tests
 
