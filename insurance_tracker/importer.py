@@ -27,7 +27,14 @@ CLASS_CODES = {
     "CGT": ("Motor - Commercial Third Party", False),
     "HOC": ("Fire - Homeowners / Comprehensive Building", False),
     "FC": ("Fire - Commercial", True),
+    "CCT": ("Motor - Commercial Third Party", True),
+    "PL": ("Public Liability", True),
+    "WC": ("Workers' Compensation", True),
 }
+
+# The VSLOB column (line of business) is used when a class code isn't known yet.
+LOB_TYPES = {"A": "Motor - Private Car", "F": "Fire - Homeowners / Comprehensive Building",
+             "L": "General Liability"}
 
 COVER_TYPES = [  # (text found in TYPE OF COVER, policy type)
     ("COMPREHENSIVE BLDG", "Fire - Homeowners / Comprehensive Building"),
@@ -274,7 +281,8 @@ def parse_commissions(rows):
         "prod": ("PRODCODE",), "prefix": ("INVPREFIX",), "policy": ("POLICYNO",),
         "invoice": ("INVOICENO",), "invdate": ("INVDATE",), "from": ("TERMFROM",),
         "to": ("TERMTO",), "client": ("CLIENTNAME",), "rate": ("COMM%",),
-        "amount": ("COMMAMT",), "net": ("NETDUE",)}.items()}
+        "amount": ("COMMAMT",), "net": ("NETDUE",), "invtype": ("INVTYPE",),
+        "lob": ("VSLOB", "LOB"), "premium": ("TOTPRM", "TOTPREM", "PREMIUM")}.items()}
 
     def get(row, k):
         i = c[k]
@@ -290,6 +298,8 @@ def parse_commissions(rows):
             "invdate": to_date(get(row, "invdate")), "from": to_date(get(row, "from")),
             "to": to_date(get(row, "to")), "client": text(get(row, "client")),
             "rate": number(get(row, "rate")), "amount": number(get(row, "amount")) or 0.0,
+            "invtype": text(get(row, "invtype")), "lob": text(get(row, "lob")).upper(),
+            "premium": number(get(row, "premium")),
         })
     return out
 
@@ -333,8 +343,25 @@ def get_or_create_client(report, name, addressee="", address="", city="", phone_
     return c["id"]
 
 
+def _core_number(number):
+    """'PCP 587 368 000' -> '587368'; '587368' -> '587368'."""
+    digits = re.sub(r"\D", "", number or "")
+    if len(digits) > 6 and digits.endswith("000"):
+        digits = digits[:-3]
+    return digits.lstrip("0")
+
+
 def _find_policy(number):
-    return query("SELECT * FROM policies WHERE UPPER(TRIM(policy_number)) = ?", (number,), one=True)
+    row = query("SELECT * FROM policies WHERE UPPER(TRIM(policy_number)) = ?", (number,), one=True)
+    if row is not None:
+        return row
+    core = _core_number(number)
+    if len(core) < 4:
+        return None
+    for row in query("SELECT * FROM policies WHERE policy_number IS NOT NULL"):
+        if _core_number(row["policy_number"]) == core:
+            return row
+    return None
 
 
 def _append_note(existing, line):
@@ -448,12 +475,19 @@ def apply_commissions(records, carrier, source, month, report):
             continue
         cid = get_or_create_client(report, r["client"])
         pol = _find_policy(r["policy"])
-        code_type, inferred = CLASS_CODES.get(r["prefix"], ("Other", True))
-        basis = round(r["amount"] / r["rate"] * 100, 2) if r["rate"] else None
+        code_type, inferred = CLASS_CODES.get(
+            r["prefix"], (LOB_TYPES.get(r.get("lob", ""), "Other"), True))
+        if r.get("premium") is not None and r["premium"] > 0:
+            basis = round(r["premium"], 2)       # premium stated on the statement
+        else:
+            basis = round(r["amount"] / r["rate"] * 100, 2) if r["rate"] else None
         term = f"{r['from']:%d %b %Y} – {r['to']:%d %b %Y}" if r["from"] and r["to"] else ""
         note = (f"{source}: invoice {r['invoice']} ({r['prefix']}), term {term}, "
                 f"commission {r['rate']:g}% = ${r['amount']:,.2f}"
                 + (f" on premium ${basis:,.2f}." if basis else "."))
+        if r.get("premium") is not None and r["premium"] <= 0:
+            note += (f" Statement shows premium ${r['premium']:,.2f} (adjustment/return premium, "
+                     f"invoice type {r.get('invtype') or '?'}) – please check.")
         if inferred:
             note += f" Policy type inferred from insurer class code '{r['prefix']}' – please confirm."
 
@@ -471,15 +505,19 @@ def apply_commissions(records, carrier, source, month, report):
             if r["to"] and (not pol["expiration_date"] or iso(r["to"]) > pol["expiration_date"]):
                 upd["expiration_date"] = iso(r["to"])
                 upd["effective_date"] = iso(r["from"])
-                if basis and not pol["premium"]:
+                if basis and (not pol["premium"] or (r.get("premium") or 0) > 0):
                     upd["premium"] = basis
             # Commission paid on a renewal term means that renewal was invoiced and paid:
             # clear the payment reminder that a renewal listing may have set.
             due = pol["next_due_date"]
-            if due and r["from"] and r["to"] and iso(r["from"] - timedelta(days=31)) <= due < iso(r["to"]):
+            if (due and r["from"] and r["to"] and (r.get("premium") is None or r["premium"] > 0)
+                    and iso(r["from"] - timedelta(days=31)) <= due <= iso(r["from"] + timedelta(days=31))):
                 upd["next_due_date"] = None
             if not pol["carrier"] and carrier:
                 upd["carrier"] = carrier
+            generic = {None, "", "Other", "Motor - Private Car", "General Liability"}
+            if pol["policy_type"] in generic and code_type not in generic:
+                upd["policy_type"] = code_type
             execute(f"UPDATE policies SET {', '.join(k + ' = ?' for k in upd)} WHERE id = ?",
                     (*upd.values(), pid))
             msg = f"#{r['policy']} – {r['client'].title()}: commission {r['rate']:g}% recorded"
@@ -489,9 +527,10 @@ def apply_commissions(records, carrier, source, month, report):
 
         execute("""INSERT INTO commissions (policy_id, client_name, statement_month, invoice_no,
                    class_code, invoice_date, term_from, term_to, rate, amount, producer_code,
-                   source_file) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   source_file, premium, inv_type) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (pid, r["client"].title(), month, r["invoice"], r["prefix"], iso(r["invdate"]),
-                 iso(r["from"]), iso(r["to"]), r["rate"], r["amount"], r["prod"], source))
+                 iso(r["from"]), iso(r["to"]), r["rate"], r["amount"], r["prod"], source,
+                 r.get("premium"), r.get("invtype") or None))
         report.add("Commission added", f"{r['client'].title()} – invoice {r['invoice']}: "
                    f"${r['amount']:,.2f}", "policy_detail", pid)
 

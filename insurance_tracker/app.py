@@ -24,7 +24,7 @@ from .db import execute, query
 POLICY_TYPES = [
     "Motor - Private Car Comprehensive", "Motor - Private Car Third Party", "Motor - Private Car",
     "Motor - Commercial Comprehensive", "Motor - Commercial Third Party",
-    "Fire - Homeowners / Comprehensive Building", "Fire - Commercial",
+    "Fire - Homeowners / Comprehensive Building", "Fire - Commercial", "Public Liability",
     "Auto", "Homeowners", "Renters", "Condo", "Life - Term", "Life - Whole",
     "Life - Universal", "Health", "Medicare Supplement", "Medicare Advantage",
     "Dental", "Vision", "Disability", "Long-Term Care", "Umbrella",

@@ -118,9 +118,18 @@ def close_db(_exc=None):
         conn.close()
 
 
+# Columns added after the first release; existing databases get them on start-up.
+MIGRATIONS = {"commissions": [("premium", "REAL"), ("inv_type", "TEXT")]}
+
+
 def init_db(path):
     conn = sqlite3.connect(path)
     conn.executescript(SCHEMA)
+    for table, cols in MIGRATIONS.items():
+        have = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+        for name, ctype in cols:
+            if name not in have:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {ctype}")
     conn.commit()
     conn.close()
 

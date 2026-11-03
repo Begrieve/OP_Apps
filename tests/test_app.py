@@ -189,3 +189,39 @@ def test_unexpected_error_shows_message(tmp_path):
 
     r = app.test_client().get("/boom")
     assert r.status_code == 500 and b"ValueError: kaboom" in r.data
+
+
+
+def test_import_xlsx_commission_with_premium_column(client, tmp_path):
+    import io
+    import openpyxl
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Agent"
+    ws.append(["ProdCode", "InvPrefix", "PolicyNo", "InvoiceNo", "InvType", "InvDate", "TermFrom",
+               "TermTo", "ClientName", "VSLOB", "Comm%", "TotPrm", "CommAmt", "NetDue"])
+    ws.append([4815, "PCL", 999000, 700001, 6, 20260721, 20260717, 20261123, "JANE DOE", "A",
+               15, -4444.05, 2320.73, -2320.73])
+    ws.append([4815, "PL", 270928, 700002, 1, 20260826, 20260724, 20270723, "WIDGET LIMITED", "L",
+               15, 800, 116.8, -116.8])
+    ws.append([4815, "ZZ", 270930, 700003, 1, 20260826, 20260724, 20270723, "WIDGET LIMITED", "F",
+               15, 1000, 150, -150])
+    ws.append([None] * 11 + [None, 2587.53, -2587.53])
+    buf = io.BytesIO()
+    wb.save(buf)
+    # The renewal listing knows Jane's policy as "PCP 999 000 000".
+    upload(client, "November 2026 Renewal Listing.csv", RENEWAL_CSV)
+    r = client.post("/import", data={"carrier": "", "files": [(io.BytesIO(buf.getvalue()),
+                    "Commissions payable for August 2026.xlsx")]}, content_type="multipart/form-data")
+    html = r.get_data(as_text=True)
+    assert "NOT imported" not in html
+    assert "#999000 – Jane Doe: commission 15% recorded" in html   # matched PCP 999 000 000
+    comm = client.get("/commissions?month=2026-08").get_data(as_text=True)
+    assert "August 2026" in comm and "$2,587.53" in comm and "$800.00" in comm
+    policies = client.get("/policies").get_data(as_text=True)
+    assert "Public Liability" in policies                # PL code
+    assert "Fire - Homeowners" in policies              # unknown code falls back to VSLOB "F"
+    assert policies.count("Doe, Jane") == 1
+    # Jane still owes the outstanding premium: reminder and payment due survive the commission.
+    rem = client.get("/reminders").get_data(as_text=True)
+    assert "Collect outstanding premium" in rem and "Jane Doe" in rem
