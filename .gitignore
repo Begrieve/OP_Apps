@@ -1,7 +1,10 @@
-insurance.db
-__pycache__/
+*.db
 *.pyc
-.venv/
 .pytest_cache/
 .tracker_secret
-*.db
+.venv/
+__pycache__/
+data/
+dist/
+insurance.db
+wheels/

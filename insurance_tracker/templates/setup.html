@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Welcome · Broker Desk</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="login-page">
+  {% if remote %}
+  <section class="card login-card">
+    <h1>Broker Desk</h1>
+    <p>Broker Desk hasn't been set up yet.</p>
+    <p class="muted">For safety, the first password can only be created on the computer that runs Broker Desk.
+       Open Broker Desk there, create the password, then come back to this device and sign in.</p>
+  </section>
+  {% else %}
+  <form method="post" class="card login-card stack" style="max-width:420px">
+    <h1>Welcome to Broker Desk</h1>
+    <p class="muted">Create the password you'll use to sign in on this computer and on other devices in your office.
+       Write it down somewhere safe.</p>
+    {% if error %}<div class="flash error">{{ error }}</div>{% endif %}
+    <label><span>Business name (optional)</span><input name="business_name" autocomplete="organization"></label>
+    <label><span>New password (at least 8 characters)</span><input type="password" name="password" required minlength="8" autocomplete="new-password" autofocus></label>
+    <label><span>Type it again</span><input type="password" name="password2" required minlength="8" autocomplete="new-password"></label>
+    <button class="btn primary">Create password and start</button>
+    <p class="muted" style="font-size:.85rem">Moving from the online version? After you sign in, go to <strong>Import → Restore from a backup</strong> to bring your data across.</p>
+  </form>
+  {% endif %}
+</body>
+</html>

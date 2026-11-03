@@ -36,7 +36,8 @@
     <li><a href="#commissions">Commissions</a></li>
     <li><a href="#reports">Reports and printing</a></li>
     <li><a href="#backups">Backups</a></li>
-    <li><a href="#upkeep">Keeping the website running</a></li>
+    <li><a href="#local">Running it on your own computer or office network</a></li>
+    <li><a href="#upkeep">Keeping the online website running</a></li>
     <li><a href="#trouble">Troubleshooting and questions</a></li>
     <li><a href="#glossary">What the colours and words mean</a></li>
   </ol>
@@ -93,7 +94,7 @@
         <em>Commission reconciliation / query</em> report for the insurer if needed.
         Finish with <strong>Download backup</strong>.</td></tr>
     <tr><td><strong>Every 3 months</strong></td><td>Click <em>Run until 3 months from today</em> on PythonAnywhere
-        (see <a href="#upkeep">section 14</a>).</td></tr>
+        (online version only, see <a href="#upkeep">section 15</a>).</td></tr>
   </table>
 </section>
 
@@ -311,13 +312,48 @@
   </ol>
   <p>Do this at least once a month (after your monthly import) and before deleting anything. The backup
      contains clients' personal information, so keep it private.</p>
-  <p class="note">To restore a backup, upload the file on PythonAnywhere's <strong>Files</strong> tab into
-     the <code>broker-data</code> folder, name it <code>insurance.db</code> (replacing the old one), then press
-     <strong>Reload</strong> on the Web tab.</p>
+  <h3>Restoring a backup</h3>
+  <p>Go to <strong>Import → Restore from a backup</strong>, choose the backup file, tick the box and click
+     <strong>Restore this backup</strong>. <strong>All</strong> the current data is replaced by the backup.
+     Before that happens, a safety copy of the current data is saved in the <code>backups</code> folder. Your sign-in
+     password stays the same.</p>
+</section>
+
+<section id="local">
+  <h2>14. Running it on your own computer or office network</h2>
+  <p>Broker Desk can also run on your own laptop or office PC, with nothing stored on the internet.
+     You use it in the browser exactly as now, and other computers and phones on the same office network or
+     Wi-Fi can sign in too. The <code>READ ME FIRST.txt</code> file in the Broker Desk folder has the full steps. In short:</p>
+  <ol>
+    <li>Install <strong>Python</strong> from python.org. On Windows, tick <em>Add python.exe to PATH</em>.</li>
+    <li>Unzip the <strong>BrokerDesk</strong> package into your Documents folder.</li>
+    <li>Double-click <strong>Start Broker Desk</strong> (<code>.bat</code> on Windows, <code>.command</code> on Mac). The first
+        start takes a minute or two. After that it starts in seconds.</li>
+    <li>Your browser opens. <strong>Create your password</strong>.</li>
+    <li>To bring your data across: on the online version, click <strong>Import → Download backup</strong>; on the new
+        copy, use <strong>Import → Restore from a backup</strong>.</li>
+  </ol>
+  <h3>Using it from other devices</h3>
+  <p>The Broker Desk window shows an address like <code>http://192.168.1.20:8080</code>. Open it in the browser on any
+     device on the same network and sign in. The main computer must be switched on, with the Broker Desk window open.
+     On Windows, allow Python on <em>Private networks</em> when asked.</p>
+  <h3>Where your data is</h3>
+  <ul>
+    <li><code>data/insurance.db</code>: your database.</li>
+    <li><code>data/backups/</code>: a backup is saved automatically each day (the last 60 are kept).</li>
+    <li><code>data/config.json</code>: settings. <code>"network": false</code> allows only this computer.
+        <code>"port"</code> changes the address number.</li>
+  </ul>
+  <p>Copy the <code>data</code> folder to a USB drive or cloud folder now and then. To install a newer version, unzip it and
+     copy your <code>data</code> folder into it.</p>
+  <h3>Changing or resetting the password</h3>
+  <p>Change it under <strong>Reports → Letterhead &amp; business details → Change password</strong>. If you forget it:
+     close Broker Desk, create an empty file named <code>reset-password.txt</code> in the <code>data</code> folder, start
+     Broker Desk again, and create a new password on the main computer. Your data isn't affected.</p>
 </section>
 
 <section id="upkeep">
-  <h2>14. Keeping the website running</h2>
+  <h2>15. Keeping the online website running</h2>
   <h3>Every 3 months (free PythonAnywhere plan)</h3>
   <p>PythonAnywhere emails you before your site is paused. Log in at pythonanywhere.com, open the
      <strong>Web</strong> tab and click <strong>Run until 3 months from today</strong>. If you miss it, the site
@@ -336,7 +372,7 @@
 </section>
 
 <section id="trouble">
-  <h2>15. Troubleshooting and questions</h2>
+  <h2>16. Troubleshooting and questions</h2>
   <dl class="faq">
     <dt>The site says "Something went wrong"</dt>
     <dd>The page shows a short error message. Nothing from that action was saved. Send the message to whoever
@@ -356,14 +392,15 @@
     <dd>Broker Desk uses Trinidad and Tobago time. If you work in another time zone, ask for <code>TRACKER_TZ</code>
         to be changed in the WSGI file.</dd>
     <dt>I forgot my password</dt>
-    <dd>Set a new one in the WSGI file (see <a href="#upkeep">section 14</a>).</dd>
+    <dd>Online version: set a new one in the WSGI file (see <a href="#upkeep">section 15</a>).
+        Own computer: see <a href="#local">section 14</a>.</dd>
     <dt>Can more than one person use it?</dt>
     <dd>Yes. Anyone with the web address and password can sign in, and they all see the same data.</dd>
   </dl>
 </section>
 
 <section id="glossary">
-  <h2>16. What the colours and words mean</h2>
+  <h2>17. What the colours and words mean</h2>
   <table class="manual-table">
     <tr><th>You see</th><th>Meaning</th></tr>
     <tr><td><span class="tk st-done">Paid · commission received</span></td><td>The renewal was paid and the commission is on a statement. Nothing to do.</td></tr>

@@ -15,4 +15,16 @@
   </div>
   <div class="form-actions"><button class="btn primary">Save</button></div>
 </form>
+
+{% if auth_mode == 'db' %}
+<form method="post" action="{{ url_for('change_password') }}" class="card form">
+  <h2>Change password</h2>
+  <div class="fields">
+    <label><span>Current password</span><input type="password" name="current" required autocomplete="current-password"></label>
+    <label><span>New password (at least 8 characters)</span><input type="password" name="password" required minlength="8" autocomplete="new-password"></label>
+    <label><span>Type the new password again</span><input type="password" name="password2" required minlength="8" autocomplete="new-password"></label>
+  </div>
+  <div class="form-actions"><button class="btn primary">Change password</button></div>
+</form>
+{% endif %}
 {% endblock %}

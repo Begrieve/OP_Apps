@@ -355,3 +355,61 @@ def test_help_manual(client):
     import re
     for img in re.findall(r'src="(/static/help/[^"]+)"', html):
         assert client.get(img).status_code == 200, img
+
+
+def _desktop_app(tmp_path, monkeypatch):
+    monkeypatch.setenv("TRACKER_DESKTOP", "1")
+    monkeypatch.delenv("TRACKER_PASSWORD", raising=False)
+    return create_app(str(tmp_path / "desk.db"))
+
+
+def test_desktop_first_start_setup_and_network_login(tmp_path, monkeypatch):
+    app = _desktop_app(tmp_path, monkeypatch)
+    here, other = app.test_client(), app.test_client()
+    lan = {"REMOTE_ADDR": "192.168.1.50"}
+    assert here.get("/").headers["Location"].endswith("/setup")
+    assert other.get("/setup", environ_base=lan).status_code == 403       # setup only on the main computer
+    assert b"at least 8" in here.post("/setup", data={"password": "short", "password2": "short"}).data
+    r = here.post("/setup", data={"password": "office-pass-1", "password2": "office-pass-1",
+                                   "business_name": "My Brokerage"}, follow_redirects=True)
+    assert b"Welcome to Broker Desk" in r.data and b"Sign out" in r.data
+    assert here.get("/setup").status_code == 302                          # can't be run twice
+    assert "/login" in other.get("/clients", environ_base=lan).headers["Location"]
+    assert b"Wrong password" in other.post("/login", data={"password": "nope"}, environ_base=lan).data
+    other.post("/login", data={"password": "office-pass-1"}, environ_base=lan)
+    assert other.get("/clients", environ_base=lan).status_code == 200
+
+    # Change password: the old one stops working, other devices must sign in again.
+    r = here.post("/settings/password", data={"current": "office-pass-1", "password": "new-pass-222",
+                                              "password2": "new-pass-222"}, follow_redirects=True)
+    assert b"Password changed" in r.data
+    assert other.get("/clients", environ_base=lan).status_code == 302
+    fresh = app.test_client()
+    assert b"Wrong password" in fresh.post("/login", data={"password": "office-pass-1"}).data
+    fresh.post("/login", data={"password": "new-pass-222"})
+    assert fresh.get("/clients").status_code == 200
+
+
+def test_restore_backup_keeps_password_and_safety_copy(tmp_path, monkeypatch):
+    import io
+    import os
+    # A backup from the "online" copy with one client in it.
+    online = create_app(str(tmp_path / "online.db")).test_client()
+    online.post("/clients/new", data={"first_name": "Online", "last_name": "Client"})
+    backup = online.get("/backup").data
+
+    app = _desktop_app(tmp_path, monkeypatch)
+    c = app.test_client()
+    c.post("/setup", data={"password": "office-pass-1", "password2": "office-pass-1"})
+    c.post("/clients/new", data={"first_name": "Old", "last_name": "Local"})
+    assert b"Nothing was changed" in c.post("/restore", data={"confirm": "1", "backup": (io.BytesIO(b"junk"), "x.db")},
+                                            content_type="multipart/form-data", follow_redirects=True).data
+    r = c.post("/restore", data={"confirm": "1", "backup": (io.BytesIO(backup), "backup.db")},
+               content_type="multipart/form-data", follow_redirects=True)
+    assert b"Backup restored: 1 clients" in r.data
+    clients = c.get("/clients").get_data(as_text=True)
+    assert "Client, Online" in clients and "Local, Old" not in clients
+    assert any(f.startswith("before-restore-") for f in os.listdir(tmp_path / "backups"))
+    fresh = app.test_client()                                  # password survived the restore
+    fresh.post("/login", data={"password": "office-pass-1"})
+    assert fresh.get("/clients").status_code == 200

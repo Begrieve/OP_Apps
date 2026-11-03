@@ -77,6 +77,16 @@ TRACKER_DB=demo.db python seed_demo.py
 TRACKER_DB=demo.db python run.py
 ```
 
+## Running it on a laptop or office network (no internet hosting)
+
+Unzip the Broker Desk package, then double-click **Start Broker Desk** (`.bat` on Windows,
+`.command` on Mac, `start-broker-desk.sh` on Linux). It sets itself up on first start, opens the
+browser, asks you to create a password, and can be used from other devices on the same network.
+Data lives in `data/`, with automatic daily backups in `data/backups/`. Move data across with
+**Import → Download backup** (old copy) and **Import → Restore from a backup** (new copy).
+See [READ ME FIRST.txt](READ%20ME%20FIRST.txt). Build the package with
+`python tools/make_package.py --offline`.
+
 ## Putting it online
 
 To use it from anywhere without downloading anything, host it for free on PythonAnywhere.

@@ -25,6 +25,19 @@
   <a class="btn" href="{{ url_for('backup') }}">Download backup</a>
 </section>
 
+<section class="card" id="restore">
+  <h2>Restore from a backup</h2>
+  <p>Replace <strong>all</strong> the data here with a backup file (<code>.db</code>) downloaded from Broker Desk.
+     Use this to move your data from the online version to this computer, or to undo a mistake.</p>
+  <p class="muted">Your current data is saved first as a safety copy{% if backups_dir %} in <code>{{ backups_dir }}</code>{% endif %}. Your sign-in password here stays the same.</p>
+  <form method="post" action="{{ url_for('restore') }}" enctype="multipart/form-data" class="stack" style="max-width:560px"
+        onsubmit="return confirm('Replace ALL current data with this backup? A safety copy of the current data is kept.')">
+    <label><span>Backup file (.db)</span><input type="file" name="backup" accept=".db,.sqlite,.sqlite3" required></label>
+    <label class="check-row"><input type="checkbox" name="confirm" value="1" required> I understand this replaces all current data</label>
+    <button class="btn danger">Restore this backup</button>
+  </form>
+</section>
+
 {% if report %}
 <section class="card">
   <h2>Import results</h2>

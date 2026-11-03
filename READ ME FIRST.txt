@@ -1,0 +1,121 @@
+BROKER DESK - RUNNING IT ON YOUR OWN COMPUTER OR OFFICE NETWORK
+===============================================================
+
+Broker Desk runs on one computer (your laptop or an office PC). You use it in your web
+browser, exactly like the online version. Other computers and phones on the same office
+network or Wi-Fi can use it too, with the same password. Nothing is stored on the internet.
+
+
+1. WHAT YOU NEED
+----------------
+* A Windows, Mac or Linux computer.
+* Python 3.10 or newer (free): https://www.python.org/downloads/
+    - WINDOWS: on the first screen of the Python installer, tick
+      "Add python.exe to PATH" before you click Install.
+    - MAC: run the installer with the normal settings.
+* Internet for the first start only, unless you received the "-offline" package.
+
+
+2. INSTALL
+----------
+1. Unzip (extract) the BrokerDesk ZIP somewhere permanent, for example your Documents
+   folder. On Windows: right-click the ZIP, choose "Extract All", then open the BrokerDesk
+   folder that appears. (Don't run it from inside the ZIP.)
+2. Start it:
+    - WINDOWS: double-click  "Start Broker Desk.bat"
+    - MAC:     double-click  "Start Broker Desk.command"
+               (the first time, if your Mac says it can't be opened: right-click it,
+               choose Open, then Open again)
+    - LINUX:   run  ./start-broker-desk.sh
+3. The first start takes a minute or two while it sets itself up. After that it starts
+   in a few seconds.
+4. Your browser opens Broker Desk. Create your password. Write it down somewhere safe.
+
+A black window stays open while Broker Desk runs. It shows the web addresses to use.
+Leave it open (you can minimise it). Closing that window stops Broker Desk.
+
+
+3. BRING YOUR DATA ACROSS FROM THE ONLINE VERSION (PythonAnywhere)
+-----------------------------------------------------------------
+1. On the ONLINE Broker Desk: go to  Import  and click  Download backup.
+   A file like  insurance-backup-2026-11-03.db  is saved to your computer.
+2. On THIS computer's Broker Desk: go to  Import , then  Restore from a backup.
+   Choose that file, tick the box, and click  Restore this backup.
+3. Everything comes across: clients, policies, payments, meetings, reminders,
+   commissions and your letterhead. Your new password stays the same.
+
+From then on use only this copy. The two copies don't sync, so anything typed
+into the online one afterwards won't appear here (you can repeat steps 1-2 to copy
+everything again, but that replaces what's here).
+
+
+4. USING IT FROM OTHER COMPUTERS AND PHONES
+-------------------------------------------
+* The black window shows a line like:   On other devices:  http://192.168.1.20:8080
+  Type that address into the browser on any device on the same Wi-Fi or office network,
+  and sign in with your password. Bookmark it.
+* WINDOWS: the first time, Windows may ask whether to allow Python on networks.
+  Tick "Private networks" and click Allow.
+* The computer running Broker Desk must be switched on, with the black window open.
+* If the address changes after restarting the router, look at the black window
+  again. To stop it changing, ask whoever looks after your router to give this
+  computer a fixed (reserved) address.
+* To allow ONLY this computer (no other devices): open  data\config.json  in Notepad
+  and change  "network": true  to  "network": false , then restart Broker Desk.
+* Do NOT set your router to make Broker Desk reachable from the internet.
+
+
+5. YOUR DATA AND BACKUPS
+------------------------
+* Everything is in the  data  folder inside BrokerDesk:
+      data\insurance.db     your database
+      data\backups\         automatic daily backups (the last 60 days are kept)
+      data\config.json      settings (port, network on/off, time zone)
+* Each day Broker Desk is started, it saves a backup automatically.
+* For extra safety, copy the whole  data  folder to a USB drive or cloud folder each
+  week, or use  Import > Download backup.
+* To go back to an earlier backup: Import > Restore from a backup, and pick a file
+  from  data\backups .
+
+
+6. MOVING TO ANOTHER COMPUTER / INSTALLING AN UPDATE
+---------------------------------------------------
+* Move to a new computer: install Python there, copy the whole BrokerDesk folder across
+  (delete the hidden  .venv  folder in the copy if it's a different type of computer),
+  and double-click Start Broker Desk.
+* Install a newer version: unzip the new version, then copy your  data  folder into it
+  (replacing the empty one). Start it. Keep the old folder until you've checked
+  everything is there.
+
+
+7. START BROKER DESK AUTOMATICALLY (optional)
+---------------------------------------------
+* WINDOWS: press Windows+R, type  shell:startup  and press Enter. Right-click
+  "Start Broker Desk.bat", choose "Create shortcut", and move the shortcut into the
+  folder that opened.
+* MAC: System Settings > General > Login Items > "+" and choose
+  "Start Broker Desk.command".
+
+
+8. LEAVING PythonAnywhere AND GitHub
+------------------------------------
+After you've restored your data here and checked it (clients, policies, commissions,
+reports), you can stop using the online version. Keep this BrokerDesk folder (or the
+ZIP) safe: it contains everything needed to run Broker Desk, so you no longer need
+PythonAnywhere or the GitHub repository. Take a final  Download backup  from the
+online version before you delete anything there.
+
+
+9. IF SOMETHING GOES WRONG
+--------------------------
+* "Python is not installed": install it (step 1), ticking "Add python.exe to PATH".
+* The first start fails: check the internet connection, then delete the  .venv
+  folder inside BrokerDesk and start again.
+* "already seems to be running": Broker Desk is already open. Look for its black
+  window, or another program is using the port. Change  "port": 8080  in
+  data\config.json  to another number such as 8081.
+* Forgot the password: close Broker Desk. In the  data  folder, create an empty
+  text file named  reset-password.txt  (Windows: right-click > New > Text Document).
+  Start Broker Desk again and create a new password in the browser on this computer.
+  Your data is not affected.
+* The full user manual is in Broker Desk under  Help , and in  docs\ .

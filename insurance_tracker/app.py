@@ -13,6 +13,7 @@ import time
 
 from flask import (Flask, Response, abort, flash, redirect, render_template,
                    request, session, url_for)
+from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
 from . import db, importer, reports, tracker
@@ -275,6 +276,9 @@ def create_app(database=None):
     app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024  # spreadsheet uploads
     # Password protection: required whenever TRACKER_PASSWORD is set (always set it when hosted).
     app.config["PASSWORD"] = os.environ.get("TRACKER_PASSWORD", "")
+    # Desktop / office-network mode: the password is created in the browser on first start
+    # and stored (hashed) in the database instead of an environment variable.
+    app.config["DESKTOP"] = os.environ.get("TRACKER_DESKTOP", "") == "1"
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["SESSION_COOKIE_SECURE"] = os.environ.get("TRACKER_HTTPS", "") == "1"
@@ -289,27 +293,111 @@ def create_app(database=None):
         return render_template("error.html", detail=detail), 500
 
     # ---------------- Login ----------------
+    LOCAL_ADDRS = {"127.0.0.1", "::1", "localhost"}
+
+    def _auth():
+        """Return (mode, fingerprint). mode: None (open), 'env', 'db' or 'setup'."""
+        if app.config["PASSWORD"]:
+            return "env", _pw_fingerprint(app.config["PASSWORD"])
+        stored = db.get_settings().get("password_hash")
+        if stored:
+            return "db", _pw_fingerprint(stored)
+        if app.config["DESKTOP"]:
+            return "setup", None
+        return None, None
+
+    @app.context_processor
+    def inject_auth():
+        mode, _fp = _auth()
+        return {"auth_on": mode in ("env", "db"), "auth_mode": mode}
+
     @app.before_request
     def require_login():
-        if not app.config["PASSWORD"] or request.endpoint in ("login", "static"):
+        if request.endpoint == "static":
             return None
-        if session.get("auth") != _pw_fingerprint(app.config["PASSWORD"]):
+        mode, fp = _auth()
+        if mode is None:
+            return None
+        if mode == "setup":
+            return None if request.endpoint == "setup" else redirect(url_for("setup"))
+        if request.endpoint == "login":
+            return None
+        if session.get("auth") != fp:
             return redirect(url_for("login", next=request.full_path))
         return None
 
+    def _password_ok(given):
+        mode, _fp = _auth()
+        if mode == "env":
+            return hmac.compare_digest(given.encode(), app.config["PASSWORD"].encode())
+        if mode == "db":
+            return check_password_hash(db.get_settings()["password_hash"], given)
+        return False
+
     @app.route("/login", methods=["GET", "POST"])
     def login():
+        mode, fp = _auth()
+        if mode == "setup":
+            return redirect(url_for("setup"))
         error = None
         if request.method == "POST":
-            if hmac.compare_digest(request.form.get("password", "").encode(), app.config["PASSWORD"].encode()):
+            if _password_ok(request.form.get("password", "")):
                 session.clear()
                 session.permanent = True
-                session["auth"] = _pw_fingerprint(app.config["PASSWORD"])
+                session["auth"] = fp
                 nxt = request.args.get("next", "")
                 return redirect(nxt if nxt.startswith("/") and not nxt.startswith("//") else "/")
             time.sleep(1)  # slow down password guessing
             error = "Wrong password."
         return render_template("login.html", error=error)
+
+    @app.route("/setup", methods=["GET", "POST"])
+    def setup():
+        mode, _fp = _auth()
+        if mode != "setup":
+            return redirect(url_for("login"))
+        if request.remote_addr not in LOCAL_ADDRS:
+            return render_template("setup.html", remote=True), 403
+        error = None
+        if request.method == "POST":
+            pw, pw2 = request.form.get("password", ""), request.form.get("password2", "")
+            if len(pw) < 8:
+                error = "Please use at least 8 characters."
+            elif pw != pw2:
+                error = "The two passwords don't match."
+            else:
+                values = {"password_hash": generate_password_hash(pw)}
+                name = request.form.get("business_name", "").strip()
+                if name:
+                    values["business_name"] = name
+                db.save_settings(values)
+                session.clear()
+                session.permanent = True
+                session["auth"] = _pw_fingerprint(values["password_hash"])
+                flash("Your password is set. Welcome to Broker Desk!")
+                return redirect(url_for("dashboard"))
+        return render_template("setup.html", remote=False, error=error)
+
+    @app.route("/settings/password", methods=["POST"])
+    def change_password():
+        mode, _fp = _auth()
+        if mode != "db":
+            flash("The password for this site is managed in the hosting settings, not here.", "error")
+            return redirect(url_for("settings"))
+        cur, new, new2 = (request.form.get(k, "") for k in ("current", "password", "password2"))
+        if not _password_ok(cur):
+            time.sleep(1)
+            flash("Your current password was not right.", "error")
+        elif len(new) < 8:
+            flash("Please use at least 8 characters for the new password.", "error")
+        elif new != new2:
+            flash("The two new passwords don't match.", "error")
+        else:
+            h = generate_password_hash(new)
+            db.save_settings({"password_hash": h})
+            session["auth"] = _pw_fingerprint(h)  # stay signed in here; others must sign in again
+            flash("Password changed. Other devices will need to sign in with the new password.")
+        return redirect(url_for("settings"))
 
     @app.route("/logout", methods=["POST"])
     def logout():
@@ -718,6 +806,63 @@ def create_app(database=None):
                         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         headers={"Content-Disposition": f"attachment; filename={safe}.xlsx"})
 
+    # ---------------- Restore from backup ----------------
+    def _backups_dir():
+        path = os.path.join(os.path.dirname(os.path.abspath(app.config["DATABASE"])), "backups")
+        os.makedirs(path, exist_ok=True)
+        return path
+
+    @app.route("/restore", methods=["POST"])
+    def restore():
+        f = request.files.get("backup")
+        if not f or not f.filename or not request.form.get("confirm"):
+            flash("Choose a backup file and tick the box to confirm.", "error")
+            return redirect(url_for("import_view") + "#restore")
+        tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False,
+                                          dir=os.path.dirname(os.path.abspath(app.config["DATABASE"])))
+        tmp.close()
+        try:
+            f.save(tmp.name)
+            with open(tmp.name, "rb") as fh:
+                if fh.read(16) != b"SQLite format 3\x00":
+                    raise ValueError("this is not a Broker Desk backup file")
+            chk = sqlite3.connect(tmp.name)
+            tables = {r[0] for r in chk.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            counts = {t: chk.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+                      for t in ("clients", "policies") if t in tables}
+            chk.close()
+            if not {"clients", "policies"} <= tables:
+                raise ValueError("the file doesn't contain Broker Desk data")
+            keep = {k: v for k, v in db.get_settings().items() if k == "password_hash"}
+            # Safety copy of what's here now.
+            stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+            safety = os.path.join(_backups_dir(), f"before-restore-{stamp}.db")
+            db.close_db()
+            cur = sqlite3.connect(app.config["DATABASE"])
+            out = sqlite3.connect(safety)
+            cur.backup(out)
+            out.close()
+            # Copy the backup over the live database.
+            src = sqlite3.connect(tmp.name)
+            src.backup(cur)
+            src.close()
+            cur.close()
+            db.init_db(app.config["DATABASE"])   # add any newer columns/tables
+            if keep:
+                db.save_settings(keep)
+            flash(f"Backup restored: {counts.get('clients', 0)} clients and {counts.get('policies', 0)} "
+                  f"policies. The previous data was saved as {os.path.basename(safety)}.")
+            return redirect(url_for("dashboard"))
+        except Exception as exc:
+            app.logger.exception("Restore failed")
+            flash(f"Nothing was changed: {exc}.", "error")
+            return redirect(url_for("import_view") + "#restore")
+        finally:
+            try:
+                os.unlink(tmp.name)
+            except OSError:
+                pass
+
     # ---------------- Help / user manual ----------------
     @app.route("/help")
     def help_page():
@@ -727,7 +872,7 @@ def create_app(database=None):
     @app.route("/import", methods=["GET", "POST"])
     def import_view():
         if request.method == "GET":
-            return render_template("import.html", report=None,
+            return render_template("import.html", report=None, backups_dir=_backups_dir(),
                                    carrier=request.args.get("carrier", "Maritime General Insurance"))
         files = [f for f in request.files.getlist("files") if f and f.filename]
         carrier = request.form.get("carrier", "").strip()
@@ -751,7 +896,7 @@ def create_app(database=None):
                                f"was saved. Error: {type(exc).__name__}: {exc}")
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
-        return render_template("import.html", report=report, carrier=carrier)
+        return render_template("import.html", report=report, carrier=carrier, backups_dir=_backups_dir())
 
     # ---------------- Reminders ----------------
     @app.route("/reminders", methods=["GET", "POST"])
