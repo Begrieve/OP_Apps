@@ -529,8 +529,10 @@ def apply_commissions(records, carrier, source, month, report):
             r["prefix"], (LOB_TYPES.get(r.get("lob", ""), "Other"), True))
         if r.get("premium") is not None and r["premium"] > 0:
             basis = round(r["premium"], 2)       # premium stated on the statement
+        elif r.get("premium") is None and r["rate"]:
+            basis = round(r["amount"] / r["rate"] * 100, 2)   # no premium column: work it out
         else:
-            basis = round(r["amount"] / r["rate"] * 100, 2) if r["rate"] else None
+            basis = None    # zero/negative premium = adjustment, don't guess a premium
         term = f"{nice(r['from'])} – {nice(r['to'])}"
         note = (f"{source}: invoice {r['invoice'] or '?'} ({r['prefix'] or '?'}), term {term}, "
                 f"commission {pct(r['rate'])} = {money(r['amount'])}"

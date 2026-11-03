@@ -29,6 +29,11 @@ everything in one SQLite database file (`insurance.db`).
   (with a 30-minute alert).
 - **Dashboard**: totals (clients, active policies, annual premium, estimated commission),
   overdue and upcoming payments, this week's meetings and to-dos, and upcoming renewals.
+- **Monthly tracker**: one row per policy, one column per month. Each month shows who
+  renews, whether they paid, and whether the commission was collected (and on which statement).
+  Colors: paid + commission received, paid but commission not received, not paid, renewing soon.
+  Month totals show renewals, paid / not paid, premium still to collect, and commission received
+  vs still expected. Filter to e.g. "Not paid" and download it all as an Excel workbook.
 - **Import insurer spreadsheets** (Import page): upload the monthly *Renewal Listing* and
   *Commissions payable* Excel reports (.xls, .xlsx or .csv).
   - Renewal listings add or update clients (address, phone) and policies (type of cover,

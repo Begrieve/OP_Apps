@@ -15,7 +15,7 @@ from flask import (Flask, Response, abort, flash, redirect, render_template,
                    request, session, url_for)
 from werkzeug.utils import secure_filename
 
-from . import db, importer
+from . import db, importer, tracker
 from .db import execute, query
 
 # ---------------------------------------------------------------------------
@@ -536,6 +536,14 @@ def create_app(database=None):
                             "notes": request.form.get("notes") or None})
         msg = f"Recorded payment of ${amount:,.2f}."
         if request.form.get("advance") and policy["next_due_date"]:
+            # Paying the renewal itself moves the policy into its new one-year term.
+            due = parse_date(policy["next_due_date"])
+            renew = tracker._renewal_date(policy)
+            if renew and abs((due - renew).days) <= 45:
+                new_end = add_months(renew, 12) - timedelta(days=1)
+                update("policies", policy_id, {"effective_date": renew.isoformat(),
+                                               "expiration_date": new_end.isoformat()})
+                msg += f" Renewed: new term {renew.strftime('%b %d, %Y')} – {new_end.strftime('%b %d, %Y')}."
             months = FREQ_MONTHS.get(policy["payment_frequency"])
             if months:
                 nxt = add_months(parse_date(policy["next_due_date"]), months)
@@ -580,6 +588,48 @@ def create_app(database=None):
             return datetime.strptime(v, "%Y-%m").strftime("%B %Y")
         except (TypeError, ValueError):
             return v or "—"
+
+    # ---------------- Monthly tracker ----------------
+    def _tracker_args():
+        t = today()
+        span = max(1, min(request.args.get("months", 6, type=int), 24))
+        start = request.args.get("start", "")
+        try:
+            y, m = (int(x) for x in start.split("-"))
+            if not 1 <= m <= 12:
+                raise ValueError
+        except ValueError:
+            first = add_months(date(t.year, t.month, 1), -3)
+            y, m = first.year, first.month
+        months = tracker.month_list((y, m), span)
+        return months, span, request.args.get("status", ""), request.args.get("q", "")
+
+    def _month_label(m):
+        return datetime.strptime(m, "%Y-%m").strftime("%b %Y")
+
+    @app.route("/tracker")
+    def tracker_view():
+        months, span, status, q = _tracker_args()
+        rows, totals = tracker.build(today(), months, status, q)
+        first = date(int(months[0][:4]), int(months[0][5:]), 1)
+        step = max(1, span // 2)
+        prev_start = add_months(first, -step).strftime("%Y-%m")
+        next_start = add_months(first, step).strftime("%Y-%m")
+        now_start = add_months(date(today().year, today().month, 1), -3).strftime("%Y-%m")
+        return render_template("tracker.html", rows=rows, totals=totals, months=months,
+                               span=span, status=status, q=q, statuses=tracker.STATUS,
+                               prev_start=prev_start, next_start=next_start,
+                               now_start=now_start, this_month=tracker.month_key(today()),
+                               month_label=_month_label)
+
+    @app.route("/tracker.xlsx")
+    def tracker_export():
+        months, _span, status, q = _tracker_args()
+        rows, totals = tracker.build(today(), months, status, q)
+        data = tracker.to_xlsx(rows, totals, months, _month_label)
+        name = f"monthly-tracker-{months[0]}-to-{months[-1]}.xlsx"
+        return Response(data, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        headers={"Content-Disposition": f"attachment; filename={name}"})
 
     # ---------------- Import spreadsheets ----------------
     @app.route("/import", methods=["GET", "POST"])

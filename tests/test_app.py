@@ -261,3 +261,40 @@ def test_import_tolerates_blank_cells_title_rows_and_header_variants(client):
     assert "15%" in comm                                  # Anna's rate worked out: 300 / 2000
     again = send()
     assert "Commission added</strong>" not in again and again.count("Already imported") >= 3
+
+
+def test_monthly_tracker_statuses_and_export(client):
+    import io
+    import openpyxl
+    upload(client, "Commissions for October 2026.csv", COMMISSION_CSV)   # Acme HOC renewal 21 Nov: commission
+    upload(client, "November 2026 Renewal Listing.csv", RENEWAL_CSV)     # John Q. Public renews 15 Nov
+    cid = make_client(client, first_name="Late", last_name="Payer")
+    make_policy(client, cid, policy_number="LP-1", expiration_date="2026-10-20",
+                next_due_date="2026-10-20", payment_frequency="Annual", premium="900")
+    html = client.get("/tracker?start=2026-10&months=3").get_data(as_text=True)
+    assert "Paid · commission received" in html            # Acme (commission on the renewal)
+    assert "Renewal coming up" in html                      # John Q. Public, 15 Nov
+    assert "Not paid" in html and "Payer" in html           # Late Payer, renewal 20 Oct passed
+
+    # Record John's renewal payment: he becomes "paid, commission not yet received"
+    # and the policy rolls into its new term.
+    from insurance_tracker.db import query
+    with client.application.app_context():
+        pid = query("SELECT id FROM policies WHERE policy_number = '22222'", one=True)["id"]
+    r = client.post(f"/policies/{pid}/payments", data={"paid_on": "2026-11-02", "amount": "1500",
+                                                       "advance": "1"}, follow_redirects=True)
+    assert "Renewed: new term Nov 15, 2026 – Nov 14, 2027" in r.get_data(as_text=True)
+    unpaid = client.get("/tracker?start=2026-10&months=3&status=awaiting").get_data(as_text=True)
+    assert "Paid · commission not yet received" in unpaid and "Public" in unpaid
+    assert "Payer" not in unpaid                            # filter works
+    rem = client.get("/reminders").get_data(as_text=True)
+    renewals_section = rem.split("Renewals in the next")[1].split("My to-do reminders")[0]
+    assert "Public" not in renewals_section                 # paid renewal leaves the renewal list
+
+    x = client.get("/tracker.xlsx?start=2026-10&months=3")
+    assert x.status_code == 200
+    wb = openpyxl.load_workbook(io.BytesIO(x.data))
+    assert wb.sheetnames == ["Monthly tracker", "Monthly totals"]
+    ws = wb["Monthly tracker"]
+    assert [c.value for c in ws[1]][4:] == ["Oct 2026", "Nov 2026", "Dec 2026"]
+    assert any("Not paid" in str(c.value) for row in ws.iter_rows() for c in row)

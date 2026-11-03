@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Monthly tracker{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Monthly tracker</h1>
+  <div class="head-actions">
+    <a class="btn ghost" href="{{ url_for('tracker_view', start=prev_start, months=span, status=status, q=q) }}">‹ Earlier</a>
+    <a class="btn ghost" href="{{ url_for('tracker_view', start=now_start, months=span, status=status, q=q) }}">This month</a>
+    <a class="btn ghost" href="{{ url_for('tracker_view', start=next_start, months=span, status=status, q=q) }}">Later ›</a>
+    <a class="btn primary" href="{{ url_for('tracker_export', start=months[0], months=span, status=status, q=q) }}">Download Excel</a>
+  </div>
+</div>
+<p class="sub">Who renews each month, whether they paid, and whether the commission was collected.
+  A commission on a renewal counts as paid, because the insurer only pays commission on collected premium.</p>
+
+<form class="filters">
+  <input type="hidden" name="start" value="{{ months[0] }}">
+  <select name="months" onchange="this.form.submit()">
+    {% for n in [3, 6, 9, 12] %}<option value="{{ n }}" {{ 'selected' if n == span }}>{{ n }} months</option>{% endfor %}
+  </select>
+  <select name="status" onchange="this.form.submit()">
+    <option value="">Everyone</option>
+    <option value="unpaid" {{ 'selected' if status == 'unpaid' }}>Not paid (past due)</option>
+    <option value="due" {{ 'selected' if status == 'due' }}>Renewing in the next 30 days</option>
+    <option value="awaiting" {{ 'selected' if status == 'awaiting' }}>Paid, commission not received</option>
+    <option value="done" {{ 'selected' if status == 'done' }}>Paid and commission received</option>
+  </select>
+  <input name="q" value="{{ q }}" placeholder="Client or policy #" style="width:auto">
+  <button class="btn small">Filter</button>
+  {% if status or q %}<a href="{{ url_for('tracker_view', start=months[0], months=span) }}">Clear</a>{% endif %}
+</form>
+
+<div class="legend">
+  <span class="tk st-done">Paid · commission received</span>
+  <span class="tk st-await">Paid · commission not received</span>
+  <span class="tk st-unpaid">Not paid</span>
+  <span class="tk st-due">Renewing in 30 days</span>
+  <span class="tk st-later">Renewal scheduled</span>
+</div>
+
+<div class="card tracker-wrap">
+<table class="tracker">
+  <thead>
+    <tr>
+      <th class="sticky">Client / policy</th>
+      {% for m in months %}<th class="{{ 'is-now' if m == this_month }}">{{ month_label(m) }}</th>{% endfor %}
+    </tr>
+    <tr class="totals">
+      <th class="sticky">Month totals</th>
+      {% for m in months %}{% set t = totals[m] %}
+      <td class="{{ 'is-now' if m == this_month }}">
+        <div><b>{{ t.renewals }}</b> renewals</div>
+        <div class="ok">{{ t.paid }} paid</div>
+        {% if t.unpaid %}<div class="bad">{{ t.unpaid }} not paid</div>{% endif %}
+        {% if t.due %}<div class="warn">{{ t.due }} coming up</div>{% endif %}
+        {% if t.premium_due %}<div class="muted">To collect {{ t.premium_due|money }}</div>{% endif %}
+        <div>Commission on renewals <b>{{ t.comm_on_renewals|money }}</b></div>
+        {% if t.comm_expected %}<div class="muted">Still expected {{ t.comm_expected|money }}</div>{% endif %}
+        {% if t.statement %}<div class="muted">Statement total {{ t.statement|money }}</div>{% endif %}
+      </td>{% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+  {% for r in rows %}{% set p = r.policy %}
+    <tr>
+      <th class="sticky">
+        <a href="{{ url_for('client_detail', client_id=p.client_id) }}">{{ r.name }}</a>
+        <div class="muted"><a href="{{ url_for('policy_detail', policy_id=p.id) }}">#{{ p.policy_number or '—' }}</a> · {{ p.policy_type }}</div>
+      </th>
+      {% for m in months %}
+      <td class="{{ 'is-now' if m == this_month }}">
+        {% for c in r.cells.get(m, []) %}
+        <a class="tk {{ c.css }}" href="{{ url_for('policy_detail', policy_id=p.id) }}{{ '#pay' if c.status in ('unpaid', 'due') }}" title="{{ c.label }}">
+          <b>{{ c.date.strftime('%d %b') }}</b> {{ c.label }}
+          {% if c.premium %}<span>Premium {{ c.premium|money }}</span>{% endif %}
+          {% if c.paid %}<span>Paid {{ c.paid|money }}</span>{% endif %}
+          {% if c.commission %}<span>Comm. {{ c.commission|money }}{% if c.statements %} ({% for s in c.statements %}{{ month_label(s) }}{{ ', ' if not loop.last }}{% endfor %} stmt){% endif %}</span>
+          {% elif c.expected %}<span>Comm. expected {{ c.expected|money }}</span>{% endif %}
+        </a>
+        {% endfor %}
+      </td>
+      {% endfor %}
+    </tr>
+  {% else %}
+    <tr><td colspan="{{ months|length + 1 }}" class="empty">Nothing in these months{% if status or q %} for this filter{% endif %}.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}
