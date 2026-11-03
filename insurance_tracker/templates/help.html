@@ -1,0 +1,384 @@
+{% extends "base.html" %}
+{% macro shot(name, caption) -%}
+<figure class="manual-shot">
+  <img src="{{ url_for('static', filename='help/' ~ name ~ '.png') }}" alt="{{ caption }}" loading="lazy">
+  <figcaption>{{ caption }}</figcaption>
+</figure>
+{%- endmacro %}
+{% block title %}User manual{% endblock %}
+{% block content %}
+<div class="report-toolbar no-print">
+  <button class="btn primary" onclick="window.print()">Print / Save as PDF</button>
+</div>
+
+<article class="manual">
+<header class="manual-cover">
+  <div class="manual-kicker">User manual</div>
+  <h1>Broker Desk</h1>
+  <p>Your insurance policy tracker: clients, policies, payments, renewals, commissions,
+     meetings and reports in one place.</p>
+  <p class="muted">The screenshots use made-up demo clients. Your own screens show your own data.</p>
+</header>
+
+<nav class="manual-toc" aria-label="Contents">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#start">Getting started</a></li>
+    <li><a href="#routine">A suggested routine</a></li>
+    <li><a href="#dashboard">The Dashboard</a></li>
+    <li><a href="#clients">Clients</a></li>
+    <li><a href="#policies">Policies</a></li>
+    <li><a href="#payments">Recording payments</a></li>
+    <li><a href="#reminders">Reminders</a></li>
+    <li><a href="#calendar">Calendar and meetings</a></li>
+    <li><a href="#import">Importing insurer spreadsheets</a></li>
+    <li><a href="#tracker">The monthly Tracker</a></li>
+    <li><a href="#commissions">Commissions</a></li>
+    <li><a href="#reports">Reports and printing</a></li>
+    <li><a href="#backups">Backups</a></li>
+    <li><a href="#upkeep">Keeping the website running</a></li>
+    <li><a href="#trouble">Troubleshooting and questions</a></li>
+    <li><a href="#glossary">What the colours and words mean</a></li>
+  </ol>
+</nav>
+
+<section id="start">
+  <h2>1. Getting started</h2>
+  <h3>Signing in</h3>
+  <p>Open your Broker Desk web address (for example <code>https://yourname.pythonanywhere.com</code>)
+     and enter your password. You stay signed in on that device for two weeks. To sign out, click
+     <strong>Sign out</strong> at the top right. Always sign out on a shared or public computer.</p>
+  <p>Bookmark the address on your phone too. Every page works on a phone.</p>
+
+  <h3>The menu</h3>
+  <table class="manual-table">
+    <tr><th>Menu item</th><th>What it's for</th></tr>
+    <tr><td>Dashboard</td><td>Today at a glance: payments overdue and due, this week's meetings, to-dos and renewals.</td></tr>
+    <tr><td>Clients</td><td>Everyone you insure: contact details and all their policies.</td></tr>
+    <tr><td>Policies</td><td>Every policy, with filters by type and status.</td></tr>
+    <tr><td>Reminders</td><td>Who needs to pay, who is renewing, and your own to-do list. The red number shows how many things are overdue.</td></tr>
+    <tr><td>Calendar</td><td>Your meetings, plus payment dates, renewals and to-dos, month by month.</td></tr>
+    <tr><td>Tracker</td><td>Month by month: who renews, who paid, and whether commission came in.</td></tr>
+    <tr><td>Commissions</td><td>Every commission line from the insurer's statements, with monthly totals.</td></tr>
+    <tr><td>Reports</td><td>Printable letters for clients and reports for insurance companies.</td></tr>
+    <tr><td>Import</td><td>Upload the insurer's Excel reports, and download a backup.</td></tr>
+    <tr><td>Help</td><td>This manual.</td></tr>
+  </table>
+  <p>The <strong>search box</strong> at the top finds clients by name, phone or email, and policies
+     by policy number, insurer or insured item (such as a vehicle registration).</p>
+
+  <h3>First-time setup (5 minutes)</h3>
+  <ol>
+    <li>Go to <a href="{{ url_for('settings') }}">Reports → Letterhead &amp; business details</a> and enter your
+        business name, your name, address, phone and email. These print at the top of every report and letter.</li>
+    <li>Go to <a href="{{ url_for('import_view') }}">Import</a> and upload your latest renewal listing and commission
+        statements (see <a href="#import">section 9</a>). This fills in most of your clients and policies for you.</li>
+    <li>Add any clients and policies that aren't on those reports by hand (see <a href="#clients">section 4</a>).</li>
+  </ol>
+  {{ shot('letterhead', 'Letterhead & business details: fill this in once.') }}
+</section>
+
+<section id="routine">
+  <h2>2. A suggested routine</h2>
+  <table class="manual-table">
+    <tr><th>When</th><th>What to do</th></tr>
+    <tr><td><strong>Every day</strong></td><td>Open the <strong>Dashboard</strong>. Call or email anyone under
+        <em>Payments overdue</em>. Check today's meetings and to-dos. When a client pays, click
+        <strong>Record payment</strong>.</td></tr>
+    <tr><td><strong>Every week</strong></td><td>Open <strong>Reminders</strong> and look at the next 30 days of
+        payments and the renewals coming up. Send <a href="#reports">renewal notices</a> and book review meetings.</td></tr>
+    <tr><td><strong>Every month</strong>, when the insurer sends reports</td><td><strong>Import</strong> the
+        renewal listing and the commission statement. Then open the <strong>Tracker</strong> and filter by
+        <em>Paid, commission not received</em> to see commissions to query. Print the
+        <em>Commission reconciliation / query</em> report for the insurer if needed.
+        Finish with <strong>Download backup</strong>.</td></tr>
+    <tr><td><strong>Every 3 months</strong></td><td>Click <em>Run until 3 months from today</em> on PythonAnywhere
+        (see <a href="#upkeep">section 14</a>).</td></tr>
+  </table>
+</section>
+
+<section id="dashboard">
+  <h2>3. The Dashboard</h2>
+  {{ shot('dashboard', 'The Dashboard') }}
+  <ul>
+    <li><strong>Top boxes:</strong> number of clients and active policies, total annual premium in force,
+        estimated annual commission, commission actually received this year, and payments overdue
+        (red when there are any).</li>
+    <li><strong>Payments overdue:</strong> active policies whose payment date has passed. Each row shows
+        the client's phone number, an <strong>Email reminder</strong> button that opens your email with a
+        polite payment reminder already written, and <strong>Record payment</strong>.</li>
+    <li><strong>Payments due in the next 14 days</strong>: the same, for payments coming up.</li>
+    <li><strong>Next 7 days on the calendar:</strong> your meetings. Click one to open it.</li>
+    <li><strong>To-do reminders:</strong> tick the box when something is done.</li>
+    <li><strong>Renewals in the next 60 days:</strong> with <strong>Email client</strong> and
+        <strong>Schedule review</strong> buttons.</li>
+  </ul>
+</section>
+
+<section id="clients">
+  <h2>4. Clients</h2>
+  <h3>Adding a client</h3>
+  <ol>
+    <li>Click <strong>Clients → + New client</strong> (or <strong>+ Client</strong> on the Dashboard).</li>
+    <li>Fill in the name and whatever contact details you have. Only the last name is required.</li>
+    <li>For a <strong>business</strong> (such as "Coral Bay Traders Limited"), leave <em>First name</em>
+        blank and put the business name in <em>Last name / business name</em>.</li>
+    <li>Click <strong>Save</strong>.</li>
+  </ol>
+  <h3>The client page</h3>
+  {{ shot('client', 'A client page: policies, meetings, contact details and reminders together.') }}
+  <p>From a client's page you can add a policy or meeting for them, edit their details, and add a
+     reminder that's linked to them. Click a phone number to call it from your phone, or an email address to write to them.</p>
+  <p><strong>Deleting a client</strong> (Edit client → Delete) also deletes all their policies,
+     payments and reminders. It can't be undone, so take a <a href="#backups">backup</a> first if unsure.</p>
+</section>
+
+<section id="policies">
+  <h2>5. Policies</h2>
+  <h3>Adding a policy</h3>
+  <p>Open the client and click <strong>+ Policy</strong>, or use <strong>Policies → + New policy</strong>.</p>
+  {{ shot('policy-form', 'The policy form') }}
+  <table class="manual-table">
+    <tr><th>Field</th><th>What to enter</th></tr>
+    <tr><td>Policy type</td><td>Motor (private car or commercial, comprehensive or third party), Fire
+        (homeowners or commercial), Public Liability, Workers' Compensation, Life, Health and others.</td></tr>
+    <tr><td>Status</td><td><em>Active</em> (in force), <em>Pending</em>, <em>Quoted</em>, <em>Lapsed</em>,
+        <em>Cancelled</em> or <em>Expired</em>. Only Active policies produce payment reminders.</td></tr>
+    <tr><td>Effective / Expiration date</td><td>The period of insurance. The expiration date is used for
+        renewal reminders.</td></tr>
+    <tr><td>Premium per payment</td><td>The amount the client pays each time, together with the
+        <em>Payment frequency</em> (Monthly, Quarterly, Semi-Annual, Annual or Paid in Full).</td></tr>
+    <tr><td>Next payment due</td><td>The date of the next payment. This drives the overdue and due-soon lists.</td></tr>
+    <tr><td>Coverage limit, Deductible</td><td>The sum insured and the excess.</td></tr>
+    <tr><td>Commission (%)</td><td>Your commission rate. It's used for the estimated commission figures.</td></tr>
+    <tr><td>Insured item</td><td>Vehicle registration and model, property address, or business details.</td></tr>
+    <tr><td>Beneficiaries / additional insureds</td><td>Life beneficiaries, mortgagees or named drivers.</td></tr>
+  </table>
+  <p>Policies brought in by an import already have most of these filled in, with the insurer's
+     details (cover type, discounts, gross and net premium) saved in <em>Notes</em>.</p>
+</section>
+
+<section id="payments">
+  <h2>6. Recording payments</h2>
+  {{ shot('policy', 'A policy page: details on the left, Record a payment on the right.') }}
+  <ol>
+    <li>Open the policy (from the client page, the Policies list, or <strong>Record payment</strong> on the Dashboard).</li>
+    <li>Under <strong>Record a payment</strong>, check the date, amount and method. Add a cheque or
+        receipt number in <em>Notes</em> if you like.</li>
+    <li>Leave <strong>Move next due date forward</strong> ticked. The next payment date then moves on by
+        one month, quarter, half-year or year, according to the payment frequency.</li>
+    <li>Click <strong>Save payment</strong>.</li>
+  </ol>
+  <p>If the payment is the <strong>renewal premium</strong>, the policy also moves into its new
+     one-year term automatically, and it drops off the renewals list.</p>
+  <p>Every payment is listed under <strong>Payment history</strong>. If you made a mistake, click
+     <strong>Remove</strong> next to the payment. The due date isn't changed back automatically, so
+     correct it with <strong>Edit policy</strong> if needed.</p>
+  <p>The <strong>Email payment reminder</strong> button at the top of a policy opens your email
+     program with a reminder to the client already written. Read it, change it if you like, and send.</p>
+</section>
+
+<section id="reminders">
+  <h2>7. Reminders</h2>
+  {{ shot('reminders', 'The Reminders page') }}
+  <ul>
+    <li><strong>Overdue payments:</strong> clients who still owe. Highlighted in red.</li>
+    <li><strong>Payments due in the next…</strong> days: choose 7, 14, 30, 60 or 90 days at the top.</li>
+    <li><strong>Renewals in the next 60 days.</strong></li>
+    <li><strong>My to-do reminders:</strong> type what you need to remember, pick a date and
+        (optionally) a client, then click <strong>Add reminder</strong>. Tick the box when it's done.</li>
+  </ul>
+  <p>When an imported renewal listing says a policy has an <em>outstanding premium</em>, a to-do
+     reminder <em>"Collect outstanding premium – policy …"</em> is created for you automatically.</p>
+  <p class="note">Reminders show inside Broker Desk. They don't send you texts or emails, so make
+     opening the Dashboard part of your morning.</p>
+</section>
+
+<section id="calendar">
+  <h2>8. Calendar and meetings</h2>
+  {{ shot('calendar', 'The Calendar: meetings (blue), payments due (red), renewals (orange) and to-dos (purple).') }}
+  <ul>
+    <li>Click a <strong>day number</strong> to add a meeting on that day, or click <strong>+ New meeting</strong>.</li>
+    <li>Give it a title, type (client meeting, renewal review, new quote, claim help, insurer visit and so on),
+        client (optional), time, place and notes. Click <strong>Save</strong>.</li>
+    <li>Click a meeting to change or delete it.</li>
+    <li><strong>Add to phone / Outlook (.ics)</strong> on a meeting downloads it as a calendar entry with a
+        30-minute alert. Open the file on your phone or computer to add it to your own calendar.</li>
+    <li><strong>Upcoming list</strong> shows all future meetings in one list.</li>
+  </ul>
+</section>
+
+<section id="import">
+  <h2>9. Importing insurer spreadsheets</h2>
+  <p>Broker Desk reads the Excel reports the insurance company sends you, so you don't have to type them in.</p>
+  <table class="manual-table">
+    <tr><th>Report</th><th>What the import does</th></tr>
+    <tr><td><strong>Renewal listing</strong><br><span class="muted">LOB, POLICY, RENEWAL DATE, CLIENT NAME…</span></td>
+        <td>Adds or updates each client (address, phone) and policy (cover, sum insured, vehicle or property,
+        discounts, premium). It sets the renewal date and the payment due, so they appear in Reminders, the
+        Calendar and the Tracker. Policies with an outstanding premium get a reminder.</td></tr>
+    <tr><td><strong>Commission statement</strong><br><span class="muted">ProdCode, InvPrefix, PolicyNo, InvoiceNo, Comm%, CommAmt…</span></td>
+        <td>Records every commission line on the <strong>Commissions</strong> page. It fills in the policy's
+        period of insurance and commission rate, and marks those renewals as paid.</td></tr>
+  </table>
+  <h3>How to import</h3>
+  <ol>
+    <li>Click <strong>Import</strong>.</li>
+    <li>Click <strong>Choose files</strong> and select one or more spreadsheets (.xls, .xlsx or .csv).
+        You can select several at once.</li>
+    <li>Check the <strong>Insurance company</strong> name. It's given to any new policies from these files.</li>
+    <li>Click <strong>Import</strong> and read the results list.</li>
+  </ol>
+  {{ shot('import-results', 'Import results: every client and policy added or updated, each with a link.') }}
+  <ul>
+    <li><strong>Importing the same file twice is safe.</strong> Clients are matched by name, policies by
+        policy number (even when written differently, such as "PCP 587 368 000" and 587368) and commission
+        lines by invoice number. Nothing is doubled.</li>
+    <li>If a file can't be read, you'll see a red line <em>"… was NOT imported. Nothing from this file
+        was saved."</em> with the reason. Nothing from that file is saved, so you can fix the file and try again.</li>
+    <li>Where the insurer's class code had to be interpreted (for example PCL = Private Car Comprehensive),
+        the policy's notes say so. Correct the policy type with <strong>Edit policy</strong> if needed.</li>
+  </ul>
+</section>
+
+<section id="tracker">
+  <h2>10. The monthly Tracker</h2>
+  <p>The Tracker answers three questions for every month: <em>who renews, who paid, and did the commission come in?</em></p>
+  {{ shot('tracker', 'The Tracker: one row per policy, one column per month.') }}
+  <ul>
+    <li>Each coloured box is a renewal, showing the date, premium, amount paid and commission (with the statement it was on).</li>
+    <li><strong>Month totals</strong> at the top: renewals, paid, not paid, premium still to collect,
+        commission received, commission still expected, and that month's statement total.</li>
+    <li>Use <strong>Earlier / This month / Later</strong> and the <em>months</em> box to change the period.</li>
+    <li>Use the <strong>filter</strong> to show only one group, for example:
+      <ul>
+        <li><em>Not paid (past due)</em> gives a list of people to chase.</li>
+        <li><em>Paid, commission not received</em> gives a list of commissions to query with the insurer.</li>
+      </ul></li>
+    <li><strong>Download Excel</strong> saves the same grid, in colour, with a month-totals sheet.</li>
+  </ul>
+  <p class="note">A renewal counts as <strong>paid</strong> if you recorded a payment for it <em>or</em> the
+     insurer paid commission on it, because insurers only pay commission once the premium is collected.</p>
+</section>
+
+<section id="commissions">
+  <h2>11. Commissions</h2>
+  {{ shot('commissions', 'The Commissions page') }}
+  <p>Shows every commission line imported from statements: client, policy, invoice, term, premium, rate and
+     commission. The boxes at the top give each statement month's total. Click one to see only that month.
+     Lines with a <span class="bad">negative premium</span> (adjustments or cancellations) appear in red.
+     Check those with the insurer.</p>
+</section>
+
+<section id="reports">
+  <h2>12. Reports and printing</h2>
+  {{ shot('reports', 'The Reports page') }}
+  <h3>For clients</h3>
+  <ul>
+    <li><strong>Client policy summary:</strong> a letter to the client listing all their policies,
+        what's coming due, and payments received.</li>
+    <li><strong>Renewal notice:</strong> a renewal letter for one policy with the renewal date, premium and cover details.</li>
+  </ul>
+  <p>Client letters never show your commission.</p>
+  <h3>For insurance companies and queries</h3>
+  <ul>
+    <li><strong>Commission reconciliation / query:</strong> commission received in the months you choose,
+        plus three query lists: renewals paid with no commission yet, adjustment lines to confirm, and
+        renewals not yet paid.</li>
+    <li><strong>Renewals for a period:</strong> everyone renewing in the chosen months, with status.</li>
+    <li><strong>Outstanding premiums:</strong> unpaid renewals in the last 12 months, plus premiums the insurer flagged.</li>
+    <li><strong>Book of business:</strong> every policy with period, sum insured, annual premium and estimated commission.</li>
+    <li><strong>Policy history:</strong> one policy in full, for answering an insurer's query.</li>
+  </ul>
+  {{ shot('report-commission', 'A report ready to print, on your letterhead.') }}
+  <h3>Printing or saving as PDF</h3>
+  <ol>
+    <li>Choose the report and options, then click <strong>Open report</strong>.</li>
+    <li>Click <strong>Print / Save as PDF</strong>.</li>
+    <li>In the print window, choose your printer, or choose <strong>Save as PDF</strong> as the destination
+        to email the report. The menu and buttons aren't printed.</li>
+  </ol>
+  <p>Insurer reports also have <strong>Download Excel</strong>.</p>
+</section>
+
+<section id="backups">
+  <h2>13. Backups</h2>
+  <p>Everything is stored in one database file on your website. To keep a copy:</p>
+  <ol>
+    <li>Go to <strong>Import</strong>.</li>
+    <li>Click <strong>Download backup</strong>. A file named like <code>insurance-backup-2026-11-03.db</code> is saved.</li>
+    <li>Keep it somewhere safe: email it to yourself, or copy it to a USB drive or cloud folder.</li>
+  </ol>
+  <p>Do this at least once a month (after your monthly import) and before deleting anything. The backup
+     contains clients' personal information, so keep it private.</p>
+  <p class="note">To restore a backup, upload the file on PythonAnywhere's <strong>Files</strong> tab into
+     the <code>broker-data</code> folder, name it <code>insurance.db</code> (replacing the old one), then press
+     <strong>Reload</strong> on the Web tab.</p>
+</section>
+
+<section id="upkeep">
+  <h2>14. Keeping the website running</h2>
+  <h3>Every 3 months (free PythonAnywhere plan)</h3>
+  <p>PythonAnywhere emails you before your site is paused. Log in at pythonanywhere.com, open the
+     <strong>Web</strong> tab and click <strong>Run until 3 months from today</strong>. If you miss it, the site
+     pauses but nothing is lost. Click the same button to start it again.</p>
+  <h3>Getting new features and fixes</h3>
+  <ol>
+    <li>On PythonAnywhere, open a <strong>Bash</strong> console (Dashboard → <em>$ Bash</em>).</li>
+    <li>Type <code>bash ~/OP_Apps/deploy/update.sh</code> and press Enter.</li>
+    <li>When it says <em>Updated</em>, go to the <strong>Web</strong> tab and press the green <strong>Reload</strong> button.</li>
+  </ol>
+  <p>Updates never touch your data.</p>
+  <h3>Changing your password</h3>
+  <p>On the Web tab, open the <strong>WSGI configuration file</strong>, change the text in the
+     <code>TRACKER_PASSWORD</code> line, click <strong>Save</strong>, then <strong>Reload</strong>. Everyone is signed out
+     and must use the new password.</p>
+</section>
+
+<section id="trouble">
+  <h2>15. Troubleshooting and questions</h2>
+  <dl class="faq">
+    <dt>The site says "Something went wrong"</dt>
+    <dd>The page shows a short error message. Nothing from that action was saved. Send the message to whoever
+        looks after the app. For the full details, on PythonAnywhere open the Web tab, then <strong>Error log</strong>,
+        and copy the last lines.</dd>
+    <dt>An import says "NOT imported"</dt>
+    <dd>Nothing from that file was saved. The message gives the reason. The most common cause is a report in a
+        different layout. Send the file and the message to whoever looks after the app.</dd>
+    <dt>A client appears twice</dt>
+    <dd>Names are matched exactly (ignoring capitals and punctuation), so "Stephen" and "Stephanie" are different
+        clients. If the same person was typed two ways, move their policies to one client (Edit policy → Client)
+        and delete the empty one.</dd>
+    <dt>A renewal shows as "Not paid" but the client paid</dt>
+    <dd>Open the policy and <strong>Record payment</strong>. When the commission statement arrives and is imported,
+        the box turns green.</dd>
+    <dt>The dates look one day off</dt>
+    <dd>Broker Desk uses Trinidad and Tobago time. If you work in another time zone, ask for <code>TRACKER_TZ</code>
+        to be changed in the WSGI file.</dd>
+    <dt>I forgot my password</dt>
+    <dd>Set a new one in the WSGI file (see <a href="#upkeep">section 14</a>).</dd>
+    <dt>Can more than one person use it?</dt>
+    <dd>Yes. Anyone with the web address and password can sign in, and they all see the same data.</dd>
+  </dl>
+</section>
+
+<section id="glossary">
+  <h2>16. What the colours and words mean</h2>
+  <table class="manual-table">
+    <tr><th>You see</th><th>Meaning</th></tr>
+    <tr><td><span class="tk st-done">Paid · commission received</span></td><td>The renewal was paid and the commission is on a statement. Nothing to do.</td></tr>
+    <tr><td><span class="tk st-await">Paid · commission not received</span></td><td>The client paid but no commission yet. Query the insurer if it's still missing after a month.</td></tr>
+    <tr><td><span class="tk st-unpaid">Not paid</span></td><td>The renewal date has passed with no payment recorded. Contact the client.</td></tr>
+    <tr><td><span class="tk st-due">Renewing in 30 days</span></td><td>Send a renewal notice and collect the premium.</td></tr>
+    <tr><td><span class="tk st-later">Renewal scheduled</span></td><td>A renewal further in the future.</td></tr>
+    <tr><td>Red number on <em>Reminders</em></td><td>How many payments and to-dos are overdue.</td></tr>
+    <tr><td>Calendar colours</td><td>Blue meetings, red payments due, orange renewals, purple to-dos.</td></tr>
+    <tr><td>O/S premium</td><td>Outstanding premium shown on the insurer's listing.</td></tr>
+    <tr><td>Class codes (PCL, PCT, CGC, CGT, CCT, HOC, FC, PL, WC)</td>
+        <td>The insurer's codes for the type of cover: private car comprehensive or third party, commercial
+        motor, homeowners fire, commercial fire, public liability, workers' compensation.</td></tr>
+    <tr><td>Term / Period of insurance</td><td>The dates the policy covers, usually one year.</td></tr>
+  </table>
+</section>
+</article>
+{% endblock %}

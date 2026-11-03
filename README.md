@@ -1,5 +1,7 @@
 # Broker Desk: Insurance Policy Tracker
 
+**User manual:** open **Help** in the app, or see [docs/Broker-Desk-User-Manual.pdf](docs/Broker-Desk-User-Manual.pdf).
+
 A private web app for an insurance broker. It runs on your own computer and stores
 everything in one SQLite database file (`insurance.db`).
 

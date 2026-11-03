@@ -452,8 +452,13 @@ def create_app(database=None):
                          (client_id,))
         meetings = query("SELECT * FROM meetings WHERE client_id = ? ORDER BY date DESC, start_time",
                          (client_id,))
-        reminders = query("SELECT * FROM reminders WHERE client_id = ? ORDER BY done, due_date",
-                          (client_id,))
+        reminders = []
+        for r in query("SELECT * FROM reminders WHERE client_id = ? ORDER BY done, due_date",
+                       (client_id,)):
+            item = dict(r)
+            due = parse_date(r["due_date"])
+            item["days"] = (due - today()).days if due else 0
+            reminders.append(item)
         return render_template("client_detail.html", client=client, policies=policies,
                                meetings=meetings, reminders=reminders)
 
@@ -712,6 +717,11 @@ def create_app(database=None):
         return Response(reports.to_xlsx(rep),
                         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         headers={"Content-Disposition": f"attachment; filename={safe}.xlsx"})
+
+    # ---------------- Help / user manual ----------------
+    @app.route("/help")
+    def help_page():
+        return render_template("help.html")
 
     # ---------------- Import spreadsheets ----------------
     @app.route("/import", methods=["GET", "POST"])

@@ -338,3 +338,20 @@ def test_reports_print_and_export(client):
     # Missing selections don't crash; bad report names are 404.
     assert client.get("/reports/client_summary").status_code == 302
     assert client.get("/reports/not-a-report").status_code == 404
+
+
+
+def test_client_page_with_reminder(client):
+    cid = make_client(client)
+    client.post("/reminders", data={"title": "Call back", "due_date": "2026-11-05", "client_id": cid})
+    r = client.get(f"/clients/{cid}")
+    assert r.status_code == 200 and "Call back" in r.get_data(as_text=True)
+    assert "in 3 days" in r.get_data(as_text=True)
+
+
+def test_help_manual(client):
+    html = client.get("/help").get_data(as_text=True)
+    assert "User manual" in html and "Importing insurer spreadsheets" in html
+    import re
+    for img in re.findall(r'src="(/static/help/[^"]+)"', html):
+        assert client.get(img).status_code == 200, img
