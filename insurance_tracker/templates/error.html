@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Something went wrong · Broker Desk</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<main>
+  <section class="card">
+    <h1>Something went wrong</h1>
+    <p>That action didn't finish, and nothing from it was saved. Send this message to whoever looks after the app:</p>
+    <pre class="pre" style="background:#f6f7f9;padding:.8rem;border-radius:6px;overflow-x:auto">{{ detail }}</pre>
+    <p><a class="btn" href="/">Back to dashboard</a></p>
+  </section>
+</main>
+</body>
+</html>

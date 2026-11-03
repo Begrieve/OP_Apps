@@ -135,5 +135,24 @@ def query(sql, args=(), one=False):
 def execute(sql, args=()):
     conn = get_db()
     cur = conn.execute(sql, args)
-    conn.commit()
+    if not g.get("in_transaction"):
+        conn.commit()
     return cur.lastrowid
+
+
+class transaction:
+    """Group many writes so they are saved together, or not at all if anything fails."""
+
+    def __enter__(self):
+        get_db()
+        g.in_transaction = True
+        return self
+
+    def __exit__(self, exc_type, _exc, _tb):
+        g.in_transaction = False
+        conn = get_db()
+        if exc_type is None:
+            conn.commit()
+        else:
+            conn.rollback()
+        return False

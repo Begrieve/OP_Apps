@@ -162,3 +162,30 @@ def test_password_protection(tmp_path, monkeypatch):
     assert r.status_code == 200 and r.data[:15] == b"SQLite format 3"
     c.post("/logout")
     assert c.get("/clients").status_code == 302
+
+
+def test_failed_import_saves_nothing_and_explains(client, monkeypatch):
+    from insurance_tracker import importer
+    real = importer.apply_renewals
+
+    def explode(records, carrier, source, report):
+        real(records[:1], carrier, source, report)   # write something, then fail
+        raise RuntimeError("simulated failure")
+
+    monkeypatch.setattr(importer, "apply_renewals", explode)
+    r = upload(client, "November 2026 Renewal Listing.csv", RENEWAL_CSV)
+    html = r.get_data(as_text=True)
+    assert r.status_code == 200
+    assert "was NOT imported" in html and "simulated failure" in html
+    assert "No clients yet" in client.get("/clients").get_data(as_text=True)  # rolled back
+
+
+def test_unexpected_error_shows_message(tmp_path):
+    app = create_app(str(tmp_path / "e.db"))
+
+    @app.route("/boom")
+    def boom():
+        raise ValueError("kaboom")
+
+    r = app.test_client().get("/boom")
+    assert r.status_code == 500 and b"ValueError: kaboom" in r.data

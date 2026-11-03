@@ -4,6 +4,8 @@ import os
 from datetime import date, datetime, timedelta, timezone
 
 import hashlib
+import shutil
+import traceback
 import hmac
 import sqlite3
 import tempfile
@@ -279,6 +281,12 @@ def create_app(database=None):
     app.permanent_session_lifetime = timedelta(days=14)
     db.init_db(app.config["DATABASE"])
     app.teardown_appcontext(db.close_db)
+
+    @app.errorhandler(500)
+    def server_error(err):
+        original = getattr(err, "original_exception", None) or err
+        detail = "".join(traceback.format_exception_only(type(original), original)).strip()
+        return render_template("error.html", detail=detail), 500
 
     # ---------------- Login ----------------
     @app.before_request
@@ -572,14 +580,20 @@ def create_app(database=None):
         report = importer.Report()
         # Commission statements first so renewals already invoiced aren't flagged as due.
         files.sort(key=lambda f: 0 if "comm" in f.filename.lower() else 1)
-        with tempfile.TemporaryDirectory() as tmp:
+        tmp = tempfile.mkdtemp(dir=os.path.dirname(os.path.abspath(app.config["DATABASE"])))
+        try:
             for f in files:
                 path = os.path.join(tmp, secure_filename(f.filename) or "upload.xls")
-                f.save(path)
                 try:
-                    importer.import_file(path, carrier, display_name=f.filename, report=report)
-                except Exception as exc:  # bad / unreadable file
-                    report.add("Warning", f"{f.filename}: could not be read ({exc}).")
+                    f.save(path)
+                    with db.transaction():  # each file is saved completely or not at all
+                        importer.import_file(path, carrier, display_name=f.filename, report=report)
+                except Exception as exc:
+                    app.logger.exception("Import of %s failed", f.filename)
+                    report.add("Warning", f"{f.filename} was NOT imported. Nothing from this file "
+                               f"was saved. Error: {type(exc).__name__}: {exc}")
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
         return render_template("import.html", report=report, carrier=carrier)
 
     # ---------------- Reminders ----------------
