@@ -357,7 +357,8 @@ def _cover_type(cover, lob):
 
 
 def apply_renewals(records, carrier, source, report):
-    today = date.today()
+    from .app import today as _today
+    today = _today()
     for r in merge_renewals(records):
         cid = get_or_create_client(report, r["client"], r.get("addressee"), r.get("address"),
                                    r.get("city"), r.get("phone"))

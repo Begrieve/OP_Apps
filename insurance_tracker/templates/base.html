@@ -21,6 +21,7 @@
   <form class="search" action="{{ url_for('search') }}">
     <input type="search" name="q" placeholder="Search clients, policy #, carrier…" value="{{ q or '' }}">
   </form>
+  {% if config.PASSWORD %}<form class="logout" method="post" action="{{ url_for('logout') }}"><button>Sign out</button></form>{% endif %}
 </header>
 <main>
   {% with msgs = get_flashed_messages(with_categories=true) %}

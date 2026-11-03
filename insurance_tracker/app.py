@@ -3,10 +3,14 @@ import calendar
 import os
 from datetime import date, datetime, timedelta, timezone
 
+import hashlib
+import hmac
+import sqlite3
 import tempfile
+import time
 
 from flask import (Flask, Response, abort, flash, redirect, render_template,
-                   request, url_for)
+                   request, session, url_for)
 from werkzeug.utils import secure_filename
 
 from . import db, importer
@@ -62,8 +66,15 @@ def add_months(d, months):
 
 
 def today():
+    """Today's date in the broker's time zone (servers usually run on UTC)."""
     override = os.environ.get("TRACKER_TODAY")  # used by tests
-    return parse_date(override) if override else date.today()
+    if override:
+        return parse_date(override)
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo(os.environ.get("TRACKER_TZ", "America/Port_of_Spain"))).date()
+    except Exception:
+        return date.today()
 
 
 # ---------------------------------------------------------------------------
@@ -226,16 +237,93 @@ def task_reminders(include_done=False):
     return out
 
 
+def _secret_key(db_path):
+    """Keep a random session key next to the database so logins survive restarts."""
+    path = os.path.join(os.path.dirname(os.path.abspath(db_path)), ".tracker_secret")
+    try:
+        with open(path) as f:
+            key = f.read().strip()
+        if key:
+            return key
+    except OSError:
+        pass
+    key = os.urandom(32).hex()
+    try:
+        with open(path, "w") as f:
+            f.write(key)
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
+    return key
+
+
+def _pw_fingerprint(pw):
+    # Changing the password logs out every existing session.
+    return hashlib.sha256(("broker-desk:" + pw).encode()).hexdigest()[:32]
+
+
 # ---------------------------------------------------------------------------
 # App factory
 # ---------------------------------------------------------------------------
 def create_app(database=None):
     app = Flask(__name__)
-    app.config["SECRET_KEY"] = os.environ.get("TRACKER_SECRET", "change-me-local-only")
     app.config["DATABASE"] = database or os.environ.get(
         "TRACKER_DB", os.path.join(os.path.dirname(os.path.dirname(__file__)), "insurance.db"))
+    app.config["SECRET_KEY"] = os.environ.get("TRACKER_SECRET") or _secret_key(app.config["DATABASE"])
+    app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024  # spreadsheet uploads
+    # Password protection: required whenever TRACKER_PASSWORD is set (always set it when hosted).
+    app.config["PASSWORD"] = os.environ.get("TRACKER_PASSWORD", "")
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    app.config["SESSION_COOKIE_SECURE"] = os.environ.get("TRACKER_HTTPS", "") == "1"
+    app.permanent_session_lifetime = timedelta(days=14)
     db.init_db(app.config["DATABASE"])
     app.teardown_appcontext(db.close_db)
+
+    # ---------------- Login ----------------
+    @app.before_request
+    def require_login():
+        if not app.config["PASSWORD"] or request.endpoint in ("login", "static"):
+            return None
+        if session.get("auth") != _pw_fingerprint(app.config["PASSWORD"]):
+            return redirect(url_for("login", next=request.full_path))
+        return None
+
+    @app.route("/login", methods=["GET", "POST"])
+    def login():
+        error = None
+        if request.method == "POST":
+            if hmac.compare_digest(request.form.get("password", "").encode(), app.config["PASSWORD"].encode()):
+                session.clear()
+                session.permanent = True
+                session["auth"] = _pw_fingerprint(app.config["PASSWORD"])
+                nxt = request.args.get("next", "")
+                return redirect(nxt if nxt.startswith("/") and not nxt.startswith("//") else "/")
+            time.sleep(1)  # slow down password guessing
+            error = "Wrong password."
+        return render_template("login.html", error=error)
+
+    @app.route("/logout", methods=["POST"])
+    def logout():
+        session.clear()
+        return redirect(url_for("login"))
+
+    @app.route("/backup")
+    def backup():
+        """Download a consistent copy of the whole database."""
+        tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        tmp.close()
+        src = sqlite3.connect(app.config["DATABASE"])
+        dst = sqlite3.connect(tmp.name)
+        src.backup(dst)
+        dst.close()
+        src.close()
+        with open(tmp.name, "rb") as f:
+            data = f.read()
+        os.unlink(tmp.name)
+        name = f"insurance-backup-{today().isoformat()}.db"
+        return Response(data, mimetype="application/octet-stream",
+                        headers={"Content-Disposition": f"attachment; filename={name}"})
 
     @app.template_filter("money")
     def money(v):

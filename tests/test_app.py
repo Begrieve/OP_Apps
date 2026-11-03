@@ -143,3 +143,22 @@ def test_import_renewal_and_commission(client):
     r = upload(client, "November 2026 Renewal Listing.csv", RENEWAL_CSV)
     assert b"Policy added" not in r.data and b"Client added" not in r.data
     assert client.get("/policies").get_data(as_text=True).count("Acme Holdings Limited") == 1
+
+
+def test_password_protection(tmp_path, monkeypatch):
+    monkeypatch.setenv("TRACKER_PASSWORD", "s3cret-pass")
+    app = create_app(str(tmp_path / "pw.db"))
+    c = app.test_client()
+    r = c.get("/clients")
+    assert r.status_code == 302 and "/login" in r.headers["Location"]
+    assert c.get("/backup").status_code == 302
+    assert c.get("/static/style.css").status_code == 200
+    r = c.post("/login?next=/clients", data={"password": "wrong"})
+    assert b"Wrong password" in r.data
+    r = c.post("/login?next=//evil.example", data={"password": "s3cret-pass"})
+    assert r.headers["Location"] == "/"
+    assert c.get("/clients").status_code == 200
+    r = c.get("/backup")
+    assert r.status_code == 200 and r.data[:15] == b"SQLite format 3"
+    c.post("/logout")
+    assert c.get("/clients").status_code == 302

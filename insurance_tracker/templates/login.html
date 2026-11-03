@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in · Broker Desk</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="login-page">
+  <form method="post" class="card login-card stack">
+    <h1>Broker Desk</h1>
+    <p class="muted">Enter your password to continue.</p>
+    {% if error %}<div class="flash error">{{ error }}</div>{% endif %}
+    <label><span>Password</span><input type="password" name="password" autofocus required autocomplete="current-password"></label>
+    <button class="btn primary">Sign in</button>
+  </form>
+</body>
+</html>

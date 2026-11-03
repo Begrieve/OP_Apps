@@ -19,6 +19,12 @@
   </form>
 </section>
 
+<section class="card">
+  <h2>Back up your data</h2>
+  <p>Download a complete copy of your database (all clients, policies, payments, meetings and commissions). Keep it somewhere safe, such as your email or a USB drive.</p>
+  <a class="btn" href="{{ url_for('backup') }}">Download backup</a>
+</section>
+
 {% if report %}
 <section class="card">
   <h2>Import results</h2>

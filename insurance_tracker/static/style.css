@@ -127,3 +127,7 @@ dd { margin: 0; }
 @media (max-width: 700px) { .cal-d { min-height: 80px; } .ev { font-size: .65rem; } }
 .stat:hover { text-decoration: none; border-color: var(--brand-2); }
 a.stat { color: var(--muted); }
+.login-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; }
+.login-card { width: 100%; max-width: 360px; }
+.topbar .logout { margin: 0; }
+.topbar .logout button { background: none; border: 1px solid rgba(255,255,255,.4); color: #fff; border-radius: 6px; padding: .35rem .7rem; cursor: pointer; font: inherit; }
