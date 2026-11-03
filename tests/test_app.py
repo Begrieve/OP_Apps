@@ -298,3 +298,43 @@ def test_monthly_tracker_statuses_and_export(client):
     ws = wb["Monthly tracker"]
     assert [c.value for c in ws[1]][4:] == ["Oct 2026", "Nov 2026", "Dec 2026"]
     assert any("Not paid" in str(c.value) for row in ws.iter_rows() for c in row)
+
+
+def test_reports_print_and_export(client):
+    import io
+    import openpyxl
+    upload(client, "Commissions for October 2026.csv", COMMISSION_CSV)
+    upload(client, "November 2026 Renewal Listing.csv", RENEWAL_CSV)
+    client.post("/settings", data={"business_name": "Test Brokers Ltd", "phone": "555-0100",
+                                   "contact_name": "Pat Broker"})
+    from insurance_tracker.db import query
+    with client.application.app_context():
+        cid = query("SELECT id FROM clients WHERE last_name = 'Public'", one=True)["id"]
+        pid = query("SELECT id FROM policies WHERE policy_number = '22222'", one=True)["id"]
+        acme = query("SELECT id FROM policies WHERE policy_number = '11111'", one=True)["id"]
+
+    summary = client.get(f"/reports/client_summary?client_id={cid}").get_data(as_text=True)
+    assert "Test Brokers Ltd" in summary and "Dear John Q.," in summary
+    assert "Your policies" in summary and "22222" in summary and "Pat Broker" in summary
+    printed = summary.split('<article class="report-page">')[1]
+    assert "ommission" not in printed                      # never shown to clients
+
+    notice = client.get(f"/reports/renewal_notice?policy_id={pid}").get_data(as_text=True)
+    assert "15 November 2026" in notice and "$1,500.00" in notice
+
+    comm = client.get("/reports/commission_reconciliation?start=2026-10&end=2026-11").get_data(as_text=True)
+    assert "Commission received" in comm and "$800.00" in comm
+    hist = client.get(f"/reports/policy_history?policy_id={acme}").get_data(as_text=True)
+    assert "Commission history" in hist and "900001" in hist
+    for url in ["/reports/renewals?start=2026-11&end=2026-12", "/reports/outstanding",
+                "/reports/book?status=Active"]:
+        assert client.get(url).status_code == 200
+
+    x = client.get("/reports/commission_reconciliation.xlsx?start=2026-10&end=2026-11")
+    wb = openpyxl.load_workbook(io.BytesIO(x.data))
+    assert wb.sheetnames[0] == "Commission received"
+    assert wb["Commission received"].max_row >= 3          # header, 2 lines, total
+
+    # Missing selections don't crash; bad report names are 404.
+    assert client.get("/reports/client_summary").status_code == 302
+    assert client.get("/reports/not-a-report").status_code == 404

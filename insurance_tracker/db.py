@@ -94,6 +94,11 @@ CREATE TABLE IF NOT EXISTS commissions (
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_commissions_policy ON commissions(policy_id);
 CREATE INDEX IF NOT EXISTS idx_policies_client ON policies(client_id);
 CREATE INDEX IF NOT EXISTS idx_policies_due ON policies(next_due_date);
@@ -165,3 +170,15 @@ class transaction:
         else:
             conn.rollback()
         return False
+
+
+def get_settings():
+    return {r["key"]: r["value"] for r in query("SELECT key, value FROM settings")}
+
+
+def save_settings(values):
+    conn = get_db()
+    for k, v in values.items():
+        conn.execute("INSERT INTO settings (key, value) VALUES (?, ?) "
+                     "ON CONFLICT(key) DO UPDATE SET value = excluded.value", (k, v))
+    conn.commit()

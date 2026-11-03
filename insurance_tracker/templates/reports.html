@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Reports</h1>
+  <div class="head-actions"><a class="btn ghost" href="{{ url_for('settings', next=url_for('reports_home')) }}">Letterhead &amp; business details</a></div>
+</div>
+{% if not biz.business_name %}
+<div class="flash error">Add your business name, address and phone so they print at the top of every report. <a href="{{ url_for('settings', next=url_for('reports_home')) }}">Set up letterhead</a></div>
+{% endif %}
+<p class="sub">Each report opens as a page you can <strong>print</strong> or <strong>save as PDF</strong> (use your browser's print button and choose "Save as PDF"). List reports can also be downloaded to Excel.</p>
+
+<div class="report-grid">
+  <section class="card">
+    <h2>For clients</h2>
+
+    <form class="report-form" action="{{ url_for('report_view', kind='client_summary') }}">
+      <h3>Client policy summary</h3>
+      <p class="muted">All of a client's policies, payments coming up and payments received, as a letter addressed to them.</p>
+      <select name="client_id" required><option value="">Choose a client…</option>
+        {% for c in clients %}<option value="{{ c.id }}">{{ c.last_name }}{% if c.first_name %}, {{ c.first_name }}{% endif %}</option>{% endfor %}</select>
+      <button class="btn primary">Open report</button>
+    </form>
+
+    <form class="report-form" action="{{ url_for('report_view', kind='renewal_notice') }}">
+      <h3>Renewal notice</h3>
+      <p class="muted">A renewal letter for one policy: renewal date, premium and cover details.</p>
+      <select name="policy_id" required><option value="">Choose a policy…</option>
+        {% for p in policies %}<option value="{{ p.id }}">{{ p.last_name }}{% if p.first_name %}, {{ p.first_name }}{% endif %} · {{ p.policy_type }} #{{ p.policy_number or '—' }}</option>{% endfor %}</select>
+      <button class="btn primary">Open letter</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>For insurance companies &amp; queries</h2>
+
+    <form class="report-form" action="{{ url_for('report_view', kind='commission_reconciliation') }}">
+      <h3>Commission reconciliation / query</h3>
+      <p class="muted">Commission received on statements in the period, plus a query list: renewals paid with no commission yet, adjustment lines to confirm, and unpaid renewals.</p>
+      <div class="row">
+        <label><span>From statement</span><input type="month" name="start" value="{{ last3 }}"></label>
+        <label><span>To</span><input type="month" name="end" value="{{ this_month }}"></label>
+        <label><span>Insurer</span><select name="carrier"><option value="">All insurers</option>{% for c in carriers %}<option>{{ c }}</option>{% endfor %}</select></label>
+      </div>
+      <button class="btn primary">Open report</button>
+    </form>
+
+    <form class="report-form" action="{{ url_for('report_view', kind='renewals') }}">
+      <h3>Renewals for a period</h3>
+      <p class="muted">Everyone renewing in the months chosen, with premium, paid status and commission.</p>
+      <div class="row">
+        <label><span>From</span><input type="month" name="start" value="{{ this_month }}"></label>
+        <label><span>To</span><input type="month" name="end" value="{{ next_month }}"></label>
+        <label><span>Insurer</span><select name="carrier"><option value="">All insurers</option>{% for c in carriers %}<option>{{ c }}</option>{% endfor %}</select></label>
+      </div>
+      <button class="btn primary">Open report</button>
+    </form>
+
+    <form class="report-form" action="{{ url_for('report_view', kind='outstanding') }}">
+      <h3>Outstanding premiums</h3>
+      <p class="muted">Renewals in the last 12 months with no payment recorded, plus premiums the insurer flagged as outstanding.</p>
+      <div class="row">
+        <label><span>Insurer</span><select name="carrier"><option value="">All insurers</option>{% for c in carriers %}<option>{{ c }}</option>{% endfor %}</select></label>
+      </div>
+      <button class="btn primary">Open report</button>
+    </form>
+
+    <form class="report-form" action="{{ url_for('report_view', kind='book') }}">
+      <h3>Book of business</h3>
+      <p class="muted">Every policy with its term, sum insured, annual premium and estimated commission.</p>
+      <div class="row">
+        <label><span>Insurer</span><select name="carrier"><option value="">All insurers</option>{% for c in carriers %}<option>{{ c }}</option>{% endfor %}</select></label>
+        <label><span>Status</span><select name="status"><option value="">All statuses</option>{% for st in statuses %}<option {{ 'selected' if st == 'Active' }}>{{ st }}</option>{% endfor %}</select></label>
+      </div>
+      <button class="btn primary">Open report</button>
+    </form>
+
+    <form class="report-form" action="{{ url_for('report_view', kind='policy_history') }}">
+      <h3>Policy history</h3>
+      <p class="muted">One policy in full: details, payments, commission lines and notes. Useful when the insurer queries a policy.</p>
+      <select name="policy_id" required><option value="">Choose a policy…</option>
+        {% for p in policies %}<option value="{{ p.id }}">{{ p.last_name }}{% if p.first_name %}, {{ p.first_name }}{% endif %} · {{ p.policy_type }} #{{ p.policy_number or '—' }}</option>{% endfor %}</select>
+      <button class="btn primary">Open report</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Letterhead{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Letterhead &amp; business details</h1></div>
+<p class="sub">These details print at the top of every report and on client letters.</p>
+<form method="post" class="card form">
+  <input type="hidden" name="next" value="{{ next }}">
+  <div class="fields">
+    {% for key, label in fields %}
+    <label class="{{ 'wide' if key in ('address', 'footer') }}"><span>{{ label }}</span>
+      {% if key in ('address', 'footer') %}<textarea name="{{ key }}" rows="2">{{ values.get(key, '') }}</textarea>
+      {% else %}<input name="{{ key }}" value="{{ values.get(key, '') }}">{% endif %}
+    </label>
+    {% endfor %}
+  </div>
+  <div class="form-actions"><button class="btn primary">Save</button></div>
+</form>
+{% endblock %}

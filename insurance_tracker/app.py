@@ -15,7 +15,7 @@ from flask import (Flask, Response, abort, flash, redirect, render_template,
                    request, session, url_for)
 from werkzeug.utils import secure_filename
 
-from . import db, importer, tracker
+from . import db, importer, reports, tracker
 from .db import execute, query
 
 # ---------------------------------------------------------------------------
@@ -338,9 +338,10 @@ def create_app(database=None):
         if v is None or v == "":
             return ""
         try:
-            return f"${float(v):,.2f}"
+            n = float(v)
         except (TypeError, ValueError):
             return str(v)
+        return f"-${-n:,.2f}" if n < 0 else f"${n:,.2f}"
 
     @app.template_filter("plainnum")
     def plainnum(v):
@@ -630,6 +631,87 @@ def create_app(database=None):
         name = f"monthly-tracker-{months[0]}-to-{months[-1]}.xlsx"
         return Response(data, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         headers={"Content-Disposition": f"attachment; filename={name}"})
+
+    # ---------------- Reports ----------------
+    SETTING_FIELDS = [("business_name", "Business / broker name"), ("contact_name", "Your name"),
+                      ("address", "Address"), ("phone", "Phone"), ("email", "Email"),
+                      ("licence", "Licence / registration no. (optional)"),
+                      ("footer", "Footer note on reports (optional)")]
+
+    @app.context_processor
+    def inject_settings():
+        return {"biz": db.get_settings()}
+
+    @app.route("/settings", methods=["GET", "POST"])
+    def settings():
+        if request.method == "POST":
+            db.save_settings({k: request.form.get(k, "").strip() for k, _ in SETTING_FIELDS})
+            flash("Letterhead saved.")
+            return redirect(request.form.get("next") or url_for("reports_home"))
+        return render_template("settings.html", fields=SETTING_FIELDS, values=db.get_settings(),
+                               next=request.args.get("next", ""))
+
+    @app.route("/reports")
+    def reports_home():
+        t = today()
+        this_month = t.strftime("%Y-%m")
+        last3 = add_months(date(t.year, t.month, 1), -2).strftime("%Y-%m")
+        next_month = add_months(date(t.year, t.month, 1), 1).strftime("%Y-%m")
+        policies = query("""SELECT p.id, p.policy_number, p.policy_type, c.first_name, c.last_name
+                            FROM policies p JOIN clients c ON c.id = p.client_id
+                            ORDER BY c.last_name, c.first_name, p.policy_type""")
+        return render_template("reports.html", clients=all_clients(), policies=policies,
+                               carriers=reports.carriers(), this_month=this_month, last3=last3,
+                               next_month=next_month, statuses=POLICY_STATUSES,
+                               client_reports=reports.CLIENT_REPORTS,
+                               insurer_reports=reports.INSURER_REPORTS)
+
+    def _build_report(kind):
+        builder = reports.BUILDERS.get(kind)
+        if builder is None:
+            abort(404)
+        a = request.args
+        t = today()
+        params = {"carrier": a.get("carrier", ""), "status": a.get("status", "Active"),
+                  "start": a.get("start") or t.strftime("%Y-%m"),
+                  "end": a.get("end") or a.get("start") or t.strftime("%Y-%m"),
+                  "client_id": a.get("client_id", type=int), "policy_id": a.get("policy_id", type=int)}
+        for k in ("start", "end"):
+            try:
+                datetime.strptime(params[k], "%Y-%m")
+            except ValueError:
+                params[k] = t.strftime("%Y-%m")
+        if params["end"] < params["start"]:
+            params["start"], params["end"] = params["end"], params["start"]
+        if kind in ("client_summary",) and not params["client_id"]:
+            flash("Choose a client for this report.", "error")
+            return None
+        if kind in ("renewal_notice", "policy_history") and not params["policy_id"]:
+            flash("Choose a policy for this report.", "error")
+            return None
+        rep = builder(t, **params)
+        if rep is None:
+            abort(404)
+        return rep
+
+    @app.route("/reports/<kind>")
+    def report_view(kind):
+        rep = _build_report(kind)
+        if rep is None:
+            return redirect(url_for("reports_home"))
+        return render_template("report.html", r=rep, kind=kind,
+                               xlsx_url=url_for("report_xlsx", kind=kind, **request.args))
+
+    @app.route("/reports/<kind>.xlsx")
+    def report_xlsx(kind):
+        rep = _build_report(kind)
+        if rep is None:
+            return redirect(url_for("reports_home"))
+        name = f"{rep['title']} {rep.get('subtitle') or ''}".strip()
+        safe = "".join(ch if ch.isalnum() else "-" for ch in name).strip("-").lower()[:80] or "report"
+        return Response(reports.to_xlsx(rep),
+                        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        headers={"Content-Disposition": f"attachment; filename={safe}.xlsx"})
 
     # ---------------- Import spreadsheets ----------------
     @app.route("/import", methods=["GET", "POST"])

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% macro fmt(v, f) -%}
+{%- if v is none or v == '' -%}
+{%- elif f == 'money' and v is number -%}{{ v|money }}
+{%- elif f == 'date' -%}{{ v|nicedate }}
+{%- elif f == 'pct' -%}{{ v|pct }}
+{%- else -%}{{ v }}
+{%- endif -%}
+{%- endmacro %}
+{% block title %}{{ r.title }}{% endblock %}
+{% block content %}
+<div class="report-toolbar no-print">
+  <a class="btn ghost" href="{{ url_for('reports_home') }}">‹ All reports</a>
+  <button class="btn primary" onclick="window.print()">Print / Save as PDF</button>
+  {% if r.audience != 'client' %}<a class="btn" href="{{ xlsx_url }}">Download Excel</a>{% endif %}
+  {% if not biz.business_name %}<a class="btn ghost" href="{{ url_for('settings', next=request.full_path) }}">Add your letterhead</a>{% endif %}
+</div>
+
+<article class="report-page">
+  <header class="letterhead">
+    <div>
+      <div class="lh-name">{{ biz.business_name or 'Insurance Broker' }}</div>
+      {% if biz.contact_name %}<div>{{ biz.contact_name }}</div>{% endif %}
+      {% if biz.address %}<div>{{ biz.address }}</div>{% endif %}
+      <div>{% if biz.phone %}Tel: {{ biz.phone }}{% endif %}{% if biz.phone and biz.email %} · {% endif %}{% if biz.email %}{{ biz.email }}{% endif %}</div>
+      {% if biz.licence %}<div class="muted">{{ biz.licence }}</div>{% endif %}
+    </div>
+    <div class="lh-right">
+      <div class="lh-title">{{ r.title }}</div>
+      {% if r.subtitle %}<div>{{ r.subtitle }}</div>{% endif %}
+      <div class="muted">{{ today.strftime('%d %B %Y') }}</div>
+    </div>
+  </header>
+
+  {% if r.addressee %}
+  <div class="addressee">
+    <strong>{{ r.addressee.name }}</strong>
+    {% for line in r.addressee.lines %}<div>{{ line }}</div>{% endfor %}
+  </div>
+  {% endif %}
+  {% if r.subject %}<p class="subject"><strong>Re: {{ r.subject }}</strong></p>{% endif %}
+  {% for para in r.paragraphs or [] %}<p>{{ para }}</p>{% endfor %}
+
+  {% for sec in r.sections %}
+  <section class="report-section">
+    <h2>{{ sec.heading }}</h2>
+    {% if sec.note %}<p class="muted">{{ sec.note }}</p>{% endif %}
+    {% if sec.kind == 'details' %}
+      <dl class="report-details">
+        {% for k, v in sec['items'] %}<dt>{{ k }}</dt><dd class="pre">{{ v }}</dd>{% endfor %}
+      </dl>
+    {% elif sec.rows %}
+      <table class="report-table">
+        <thead><tr>{% for k, label, f in sec.columns %}<th class="{{ 'num' if f in ('money', 'pct', 'int') }}">{{ label }}</th>{% endfor %}</tr></thead>
+        <tbody>
+        {% for row in sec.rows %}
+          <tr class="{{ 'flagged' if row.flag }}">{% for k, label, f in sec.columns %}<td class="{{ 'num' if f in ('money', 'pct', 'int') }}">{{ fmt(row[k], f) }}</td>{% endfor %}</tr>
+        {% endfor %}
+        </tbody>
+        {% if sec.totals %}
+        <tfoot><tr>{% for k, label, f in sec.columns %}<td class="{{ 'num' if f in ('money', 'pct', 'int') }}">{% if loop.first %}Total ({{ sec.rows|length }}){% elif k in sec.totals %}{{ fmt(sec.totals[k], f) }}{% endif %}</td>{% endfor %}</tr></tfoot>
+        {% endif %}
+      </table>
+    {% else %}
+      <p class="empty">{{ sec.empty or 'Nothing to show.' }}</p>
+    {% endif %}
+  </section>
+  {% endfor %}
+
+  <div class="closing">
+  {% for para in r.closing or [] %}<p>{{ para }}</p>{% endfor %}
+  {% if r.audience == 'client' %}
+  <div class="signoff">
+    <p>Yours sincerely,</p>
+    <p class="sig-line"></p>
+    <p><strong>{{ biz.contact_name or biz.business_name or '' }}</strong>{% if biz.contact_name and biz.business_name %}<br>{{ biz.business_name }}{% endif %}</p>
+  </div>
+  {% endif %}
+  {% if biz.footer %}<footer class="report-footer">{{ biz.footer }}</footer>{% endif %}
+  </div>
+</article>
+{% endblock %}

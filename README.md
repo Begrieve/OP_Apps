@@ -34,6 +34,12 @@ everything in one SQLite database file (`insurance.db`).
   Colors: paid + commission received, paid but commission not received, not paid, renewing soon.
   Month totals show renewals, paid / not paid, premium still to collect, and commission received
   vs still expected. Filter to e.g. "Not paid" and download it all as an Excel workbook.
+- **Reports** (print or save as PDF, list reports also download to Excel), on your letterhead:
+  - For clients: *Client policy summary* letter and *Renewal notice* letter (commission never shown).
+  - For insurers and queries: *Commission reconciliation / query* (commission received, paid
+    renewals with no commission yet, adjustment lines to confirm), *Renewals for a period*,
+    *Outstanding premiums*, *Book of business*, and *Policy history*.
+  - Set your business name, address and phone once under Reports → Letterhead.
 - **Import insurer spreadsheets** (Import page): upload the monthly *Renewal Listing* and
   *Commissions payable* Excel reports (.xls, .xlsx or .csv).
   - Renewal listings add or update clients (address, phone) and policies (type of cover,
