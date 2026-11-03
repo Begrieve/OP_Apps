@@ -225,3 +225,39 @@ def test_import_xlsx_commission_with_premium_column(client, tmp_path):
     # Jane still owes the outstanding premium: reminder and payment due survive the commission.
     rem = client.get("/reminders").get_data(as_text=True)
     assert "Collect outstanding premium" in rem and "Jane Doe" in rem
+
+
+
+def test_import_tolerates_blank_cells_title_rows_and_header_variants(client):
+    import io
+    import openpyxl
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["Commissions payable to Agent for March 2026"])          # title line
+    ws.append([])
+    ws.append(["Prod Code", "Inv Prefix", "Policy No", "Invoice No", "Inv Date", "Term From",
+               "Term To", "Client Name", "Comm %", "Tot Prm", "Comm Amt", "Net Due"])
+    ws.append([4815, "PCL", 111222, 800001, 20260301, 20260305, 20270304, "ANNA BELL", None,
+               2000, 300, -300])                                         # blank Comm %
+    ws.append([4815, "HOC", 333444, None, None, None, None, "CARL DEAN", None, None, 125.5,
+               -125.5])                                                  # blank almost everything
+    ws.append([4815, "PCT", 555666, 800003, 20260310, 20260312, 20270311, "EVE FOX", 15,
+               1000, 150, -150])
+    ws.append([None] * 10 + [575.5, -575.5])                              # totals row
+    buf = io.BytesIO()
+    wb.save(buf)
+    body = buf.getvalue()
+
+    def send():
+        return client.post("/import", data={"carrier": "", "files": [(io.BytesIO(body),
+                           "Commissions Payable for March 2026.xlsx")]},
+                           content_type="multipart/form-data").get_data(as_text=True)
+
+    html = send()
+    assert "NOT imported" not in html and "Warning" not in html
+    assert html.count("Commission added") >= 3
+    comm = client.get("/commissions?month=2026-03").get_data(as_text=True)
+    assert "March 2026" in comm and "$575.50" in comm
+    assert "15%" in comm                                  # Anna's rate worked out: 300 / 2000
+    again = send()
+    assert "Commission added</strong>" not in again and again.count("Already imported") >= 3

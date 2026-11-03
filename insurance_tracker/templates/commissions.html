@@ -35,7 +35,7 @@
     <td>{{ r.invoice_no }}<div class="muted">{{ r.invoice_date|nicedate }}</div></td>
     <td>{{ r.term_from|nicedate }} –<br>{{ r.term_to|nicedate }}</td>
     <td class="num {{ 'bad' if r.premium is not none and r.premium < 0 }}">{{ r.premium|money }}</td>
-    <td class="num">{{ r.rate|plainnum }}%</td>
+    <td class="num">{{ r.rate|pct }}</td>
     <td class="num">{{ r.amount|money }}</td>
   </tr>
   {% endfor %}

@@ -335,11 +335,26 @@ def create_app(database=None):
 
     @app.template_filter("money")
     def money(v):
-        return "" if v is None else f"${v:,.2f}"
+        if v is None or v == "":
+            return ""
+        try:
+            return f"${float(v):,.2f}"
+        except (TypeError, ValueError):
+            return str(v)
 
     @app.template_filter("plainnum")
     def plainnum(v):
-        return f"{v:.2f}".rstrip("0").rstrip(".")
+        if v is None or v == "":
+            return ""
+        try:
+            return f"{float(v):.2f}".rstrip("0").rstrip(".")
+        except (TypeError, ValueError):
+            return str(v)
+
+    @app.template_filter("pct")
+    def pct(v):
+        n = plainnum(v)
+        return f"{n}%" if n else "—"
 
     @app.template_filter("nicedate")
     def nicedate(v):

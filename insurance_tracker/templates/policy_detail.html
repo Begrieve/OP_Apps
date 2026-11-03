@@ -8,7 +8,7 @@
     <tbody>
     {% for c in commissions %}
     <tr><td>{{ c.statement_month|monthname }}</td><td>{{ c.invoice_no }} <span class="muted">{{ c.class_code }}</span></td>
-      <td>{{ c.term_from|nicedate }} – {{ c.term_to|nicedate }}</td><td class="num">{{ c.rate|plainnum }}%</td><td class="num">{{ c.amount|money }}</td></tr>
+      <td>{{ c.term_from|nicedate }} – {{ c.term_to|nicedate }}</td><td class="num">{{ c.rate|pct }}</td><td class="num">{{ c.amount|money }}</td></tr>
     {% endfor %}
     </tbody>
   </table>
@@ -93,7 +93,7 @@
     <tbody>
     {% for c in commissions %}
     <tr><td>{{ c.statement_month|monthname }}</td><td>{{ c.invoice_no }} <span class="muted">{{ c.class_code }}</span></td>
-      <td>{{ c.term_from|nicedate }} – {{ c.term_to|nicedate }}</td><td class="num">{{ c.rate|plainnum }}%</td><td class="num">{{ c.amount|money }}</td></tr>
+      <td>{{ c.term_from|nicedate }} – {{ c.term_to|nicedate }}</td><td class="num">{{ c.rate|pct }}</td><td class="num">{{ c.amount|money }}</td></tr>
     {% endfor %}
     </tbody>
   </table>

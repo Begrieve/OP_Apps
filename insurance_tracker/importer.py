@@ -100,6 +100,23 @@ def norm_header(h):
     return re.sub(r"\s+", " ", str(h)).strip().upper()
 
 
+def compact(h):
+    """'Comm %' / 'COMM%' / 'Comm_%' -> 'COMM%'; 'Policy No.' -> 'POLICYNO'."""
+    return re.sub(r"[^A-Z0-9%]", "", str(h).upper())
+
+
+def money(v):
+    return "?" if v is None else f"${v:,.2f}"
+
+
+def pct(v):
+    return "?" if v is None else f"{v:g}%"
+
+
+def nice(d):
+    return d.strftime("%d %b %Y") if d else "?"
+
+
 def text(v):
     if v is None:
         return ""
@@ -197,13 +214,41 @@ def statement_month(sheet_name, filename, rows_dates):
 # ---------------------------------------------------------------------------
 # Parsing report layouts
 # ---------------------------------------------------------------------------
+COMMISSION_COLUMNS = {
+    "prod": ("PRODCODE", "PRODUCERCODE", "AGENTCODE"),
+    "prefix": ("INVPREFIX", "PREFIX", "CLASS", "CLASSCODE"),
+    "policy": ("POLICYNO", "POLICYNUMBER", "POLICY", "POLNO"),
+    "invoice": ("INVOICENO", "INVOICENUMBER", "INVNO", "INVOICE"),
+    "invdate": ("INVDATE", "INVOICEDATE"),
+    "from": ("TERMFROM", "FROM", "EFFECTIVEDATE", "STARTDATE"),
+    "to": ("TERMTO", "TO", "EXPIRYDATE", "EXPIRATIONDATE", "ENDDATE"),
+    "client": ("CLIENTNAME", "CLIENT", "INSURED", "INSUREDNAME", "NAME"),
+    "rate": ("COMM%", "COMMISSION%", "COMMPCT", "COMMRATE", "COMMISSIONRATE", "RATE%", "RATE", "%"),
+    "amount": ("COMMAMT", "COMMISSIONAMT", "COMMAMOUNT", "COMMISSIONAMOUNT", "COMMISSION", "COMM"),
+    "net": ("NETDUE", "NETAMT", "NET"),
+    "invtype": ("INVTYPE", "INVOICETYPE", "TYPE"),
+    "lob": ("VSLOB", "LOB"),
+    "premium": ("TOTPRM", "TOTPREM", "TOTALPREMIUM", "PREMIUM", "PREM", "GROSSPREMIUM"),
+}
+
+
 def detect(header):
-    h = {norm_header(c) for c in header}
-    if {"POLICYNO", "COMMAMT"} <= h or {"POLICYNO", "COMM%"} <= h:
+    h = {compact(c) for c in header}
+    has = lambda key: any(a in h for a in COMMISSION_COLUMNS[key])  # noqa: E731
+    if has("policy") and has("client") and has("amount") and "RENEWALDATE" not in h:
         return "commission"
-    if "POLICY" in h and "RENEWAL DATE" in h:
+    if "POLICY" in h and "RENEWALDATE" in h:
         return "renewal"
     return None
+
+
+def find_header(rows, limit=15):
+    """Reports sometimes have a title line or two above the column headings."""
+    for i, row in enumerate(rows[:limit]):
+        kind = detect(row)
+        if kind:
+            return i, kind
+    return None, None
 
 
 def _col(header, *names, startswith=False):
@@ -276,13 +321,10 @@ def merge_renewals(records):
 
 
 def parse_commissions(rows):
-    header = rows[0]
-    c = {k: _col(header, *v) for k, v in {
-        "prod": ("PRODCODE",), "prefix": ("INVPREFIX",), "policy": ("POLICYNO",),
-        "invoice": ("INVOICENO",), "invdate": ("INVDATE",), "from": ("TERMFROM",),
-        "to": ("TERMTO",), "client": ("CLIENTNAME",), "rate": ("COMM%",),
-        "amount": ("COMMAMT",), "net": ("NETDUE",), "invtype": ("INVTYPE",),
-        "lob": ("VSLOB", "LOB"), "premium": ("TOTPRM", "TOTPREM", "PREMIUM")}.items()}
+    header = [compact(h) for h in rows[0]]
+    c = {}
+    for key, aliases in COMMISSION_COLUMNS.items():
+        c[key] = next((header.index(a) for a in aliases if a in header), None)
 
     def get(row, k):
         i = c[k]
@@ -292,6 +334,8 @@ def parse_commissions(rows):
     for row in rows[1:]:
         if not text(get(row, "policy")) or not text(get(row, "client")):
             continue  # skips the totals row
+        if compact(get(row, "policy")) in ("POLICYNO", "POLICY"):
+            continue  # a repeated heading row
         out.append({
             "prod": text(get(row, "prod")), "prefix": text(get(row, "prefix")).upper(),
             "policy": policy_key(get(row, "policy")), "invoice": text(get(row, "invoice")),
@@ -301,6 +345,12 @@ def parse_commissions(rows):
             "invtype": text(get(row, "invtype")), "lob": text(get(row, "lob")).upper(),
             "premium": number(get(row, "premium")),
         })
+        rec = out[-1]
+        if not rec["invoice"]:  # no invoice number: build a stable key so re-imports still match
+            rec["invoice"] = (f"{rec['policy']}-{iso(rec['invdate']) or iso(rec['from']) or ''}-"
+                              f"{rec['amount']:.2f}")
+        if rec["rate"] is None and rec["premium"] and rec["amount"]:
+            rec["rate"] = round(rec["amount"] / rec["premium"] * 100, 2)  # work the rate out
     return out
 
 
@@ -460,7 +510,7 @@ def apply_renewals(records, carrier, source, report):
             if not exists:
                 execute("INSERT INTO reminders (title, due_date, client_id, policy_id, notes) "
                         "VALUES (?,?,?,?,?)", (title, today.isoformat(), cid, pid,
-                                               r.get("remarks") or f"O/S premium ${r['os']:,.2f}"))
+                                               r.get("remarks") or f"O/S premium {money(r.get('os'))}"))
                 if not renewal:
                     execute("UPDATE policies SET next_due_date = ? WHERE id = ? AND next_due_date IS NULL",
                             (today.isoformat(), pid))
@@ -481,12 +531,12 @@ def apply_commissions(records, carrier, source, month, report):
             basis = round(r["premium"], 2)       # premium stated on the statement
         else:
             basis = round(r["amount"] / r["rate"] * 100, 2) if r["rate"] else None
-        term = f"{r['from']:%d %b %Y} – {r['to']:%d %b %Y}" if r["from"] and r["to"] else ""
-        note = (f"{source}: invoice {r['invoice']} ({r['prefix']}), term {term}, "
-                f"commission {r['rate']:g}% = ${r['amount']:,.2f}"
-                + (f" on premium ${basis:,.2f}." if basis else "."))
+        term = f"{nice(r['from'])} – {nice(r['to'])}"
+        note = (f"{source}: invoice {r['invoice'] or '?'} ({r['prefix'] or '?'}), term {term}, "
+                f"commission {pct(r['rate'])} = {money(r['amount'])}"
+                + (f" on premium {money(basis)}." if basis else "."))
         if r.get("premium") is not None and r["premium"] <= 0:
-            note += (f" Statement shows premium ${r['premium']:,.2f} (adjustment/return premium, "
+            note += (f" Statement shows premium {money(r['premium'])} (adjustment/return premium, "
                      f"invoice type {r.get('invtype') or '?'}) – please check.")
         if inferred:
             note += f" Policy type inferred from insurer class code '{r['prefix']}' – please confirm."
@@ -498,10 +548,12 @@ def apply_commissions(records, carrier, source, month, report):
                           (cid, r["policy"], code_type, carrier or None, "Active", iso(r["from"]),
                            iso(r["to"]), basis, "Annual", r["rate"], note))
             report.add("Policy added", f"#{r['policy']} {code_type} – {r['client'].title()}"
-                       + (f", term to {r['to']:%d %b %Y}" if r["to"] else ""), "policy_detail", pid)
+                       + (f", term to {nice(r['to'])}" if r["to"] else ""), "policy_detail", pid)
         else:
             pid = pol["id"]
-            upd = {"notes": _append_note(pol["notes"], note), "commission_rate": r["rate"]}
+            upd = {"notes": _append_note(pol["notes"], note)}
+            if r["rate"] is not None:
+                upd["commission_rate"] = r["rate"]
             if r["to"] and (not pol["expiration_date"] or iso(r["to"]) > pol["expiration_date"]):
                 upd["expiration_date"] = iso(r["to"])
                 upd["effective_date"] = iso(r["from"])
@@ -520,9 +572,9 @@ def apply_commissions(records, carrier, source, month, report):
                 upd["policy_type"] = code_type
             execute(f"UPDATE policies SET {', '.join(k + ' = ?' for k in upd)} WHERE id = ?",
                     (*upd.values(), pid))
-            msg = f"#{r['policy']} – {r['client'].title()}: commission {r['rate']:g}% recorded"
+            msg = f"#{r['policy']} – {r['client'].title()}: commission {pct(r['rate'])} recorded"
             if "next_due_date" in upd:
-                msg += f"; renewal from {r['from']:%d %b %Y} already invoiced, payment reminder cleared"
+                msg += f"; renewal from {nice(r['from'])} already invoiced, payment reminder cleared"
             report.add("Policy updated", msg, "policy_detail", pid)
 
         execute("""INSERT INTO commissions (policy_id, client_name, statement_month, invoice_no,
@@ -532,7 +584,7 @@ def apply_commissions(records, carrier, source, month, report):
                  iso(r["from"]), iso(r["to"]), r["rate"], r["amount"], r["prod"], source,
                  r.get("premium"), r.get("invtype") or None))
         report.add("Commission added", f"{r['client'].title()} – invoice {r['invoice']}: "
-                   f"${r['amount']:,.2f}", "policy_detail", pid)
+                   f"{money(r['amount'])}", "policy_detail", pid)
 
 
 def import_file(path, carrier="", display_name=None, report=None):
@@ -545,7 +597,9 @@ def import_file(path, carrier="", display_name=None, report=None):
         rows = [r for r in rows if any(text(v) for v in r)]
         if not rows:
             continue
-        kind = detect(rows[0])
+        start, kind = find_header(rows)
+        if kind:
+            rows = rows[start:]
         if kind == "renewal":
             found = True
             renewal_rows.extend(parse_renewals(rows))
