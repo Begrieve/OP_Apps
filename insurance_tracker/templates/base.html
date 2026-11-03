@@ -15,7 +15,7 @@
     <a href="{{ url_for('policies') }}" class="{{ 'on' if request.endpoint and request.endpoint.startswith('polic') }}">Policies</a>
     <a href="{{ url_for('reminders') }}" class="{{ 'on' if request.endpoint and request.endpoint.startswith('reminder') }}">Reminders{% if nav_alert_count %} <span class="badge">{{ nav_alert_count }}</span>{% endif %}</a>
     <a href="{{ url_for('calendar_view') }}" class="{{ 'on' if request.endpoint in ('calendar_view', 'meetings', 'meeting_new', 'meeting_edit') }}">Calendar</a>
-    <a href="{{ url_for('tracker_view') }}" class="{{ 'on' if request.endpoint == 'tracker_view' }}">Tracker</a>
+    <a href="{{ url_for('tracker_view') }}" class="{{ 'on' if request.endpoint == 'tracker_view' }}">Monthly Tracker</a>
     <a href="{{ url_for('commissions') }}" class="{{ 'on' if request.endpoint == 'commissions' }}">Commissions</a>
     <a href="{{ url_for('reports_home') }}" class="{{ 'on' if request.endpoint in ('reports_home', 'report_view', 'settings') }}">Reports</a>
     <a href="{{ url_for('import_view') }}" class="{{ 'on' if request.endpoint == 'import_view' }}">Import</a>

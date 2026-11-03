@@ -14,15 +14,15 @@ h2 { font-size: 1.05rem; margin: 1.1rem 0 .6rem; display: flex; align-items: cen
 h2:first-child { margin-top: 0; }
 h3 { font-size: .9rem; margin: 1rem 0 .3rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
 
-.topbar { display: flex; align-items: center; gap: 1rem; padding: .7rem 1.5rem; background: var(--brand);
+.topbar { display: flex; align-items: center; gap: .8rem; padding: .7rem 1.5rem; background: var(--brand);
   color: #fff; flex-wrap: wrap; position: sticky; top: 0; z-index: 5; }
 .brand { color: #fff; font-weight: 700; font-size: 1.15rem; }
 .topbar nav { display: flex; gap: .25rem; flex-wrap: wrap; }
-.topbar nav a { color: #dce7f7; padding: .4rem .5rem; border-radius: 6px; font-size: .92rem; }
+.topbar nav a { color: #dce7f7; padding: .4rem .42rem; border-radius: 6px; font-size: .9rem; white-space: nowrap; }
 .topbar nav { gap: .1rem; }
 .topbar nav a:hover, .topbar nav a.on { background: rgba(255,255,255,.15); color: #fff; text-decoration: none; }
 .topbar .search { margin-left: auto; }
-.topbar .search input { width: 170px; max-width: 100%; padding: .45rem .7rem; border-radius: 6px; border: 0; }
+.topbar .search input { width: 150px; max-width: 100%; padding: .45rem .7rem; border-radius: 6px; border: 0; }
 .badge { background: #ff5252; color: #fff; border-radius: 10px; padding: 0 .45rem; font-size: .75rem; font-weight: 700; }
 
 main { max-width: 1250px; margin: 0 auto; padding: 1.4rem 1.5rem 3rem; }

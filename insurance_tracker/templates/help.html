@@ -32,7 +32,7 @@
     <li><a href="#reminders">Reminders</a></li>
     <li><a href="#calendar">Calendar and meetings</a></li>
     <li><a href="#import">Importing insurer spreadsheets</a></li>
-    <li><a href="#tracker">The monthly Tracker</a></li>
+    <li><a href="#tracker">The Monthly Tracker</a></li>
     <li><a href="#commissions">Commissions</a></li>
     <li><a href="#reports">Reports and printing</a></li>
     <li><a href="#backups">Backups</a></li>
@@ -58,7 +58,7 @@
     <tr><td>Policies</td><td>Every policy, with filters by type and status.</td></tr>
     <tr><td>Reminders</td><td>Who needs to pay, who is renewing, and your own to-do list. The red number shows how many things are overdue.</td></tr>
     <tr><td>Calendar</td><td>Your meetings, plus payment dates, renewals and to-dos, month by month.</td></tr>
-    <tr><td>Tracker</td><td>Month by month: who renews, who paid, and whether commission came in.</td></tr>
+    <tr><td>Monthly Tracker</td><td>Month by month: who renews, who paid, and whether commission came in.</td></tr>
     <tr><td>Commissions</td><td>Every commission line from the insurer's statements, with monthly totals.</td></tr>
     <tr><td>Reports</td><td>Printable letters for clients and reports for insurance companies.</td></tr>
     <tr><td>Import</td><td>Upload the insurer's Excel reports, and download a backup.</td></tr>
@@ -88,7 +88,7 @@
     <tr><td><strong>Every week</strong></td><td>Open <strong>Reminders</strong> and look at the next 30 days of
         payments and the renewals coming up. Send <a href="#reports">renewal notices</a> and book review meetings.</td></tr>
     <tr><td><strong>Every month</strong>, when the insurer sends reports</td><td><strong>Import</strong> the
-        renewal listing and the commission statement. Then open the <strong>Tracker</strong> and filter by
+        renewal listing and the commission statement. Then open the <strong>Monthly Tracker</strong> and filter by
         <em>Paid, commission not received</em> to see commissions to query. Print the
         <em>Commission reconciliation / query</em> report for the insurer if needed.
         Finish with <strong>Download backup</strong>.</td></tr>
@@ -216,7 +216,7 @@
     <tr><td><strong>Renewal listing</strong><br><span class="muted">LOB, POLICY, RENEWAL DATE, CLIENT NAME…</span></td>
         <td>Adds or updates each client (address, phone) and policy (cover, sum insured, vehicle or property,
         discounts, premium). It sets the renewal date and the payment due, so they appear in Reminders, the
-        Calendar and the Tracker. Policies with an outstanding premium get a reminder.</td></tr>
+        Calendar and the Monthly Tracker. Policies with an outstanding premium get a reminder.</td></tr>
     <tr><td><strong>Commission statement</strong><br><span class="muted">ProdCode, InvPrefix, PolicyNo, InvoiceNo, Comm%, CommAmt…</span></td>
         <td>Records every commission line on the <strong>Commissions</strong> page. It fills in the policy's
         period of insurance and commission rate, and marks those renewals as paid.</td></tr>
@@ -242,9 +242,9 @@
 </section>
 
 <section id="tracker">
-  <h2>10. The monthly Tracker</h2>
-  <p>The Tracker answers three questions for every month: <em>who renews, who paid, and did the commission come in?</em></p>
-  {{ shot('tracker', 'The Tracker: one row per policy, one column per month.') }}
+  <h2>10. The Monthly Tracker</h2>
+  <p>The Monthly Tracker answers three questions for every month: <em>who renews, who paid, and did the commission come in?</em></p>
+  {{ shot('tracker', 'The Monthly Tracker: one row per policy, one column per month.') }}
   <ul>
     <li>Each coloured box is a renewal, showing the date, premium, amount paid and commission (with the statement it was on).</li>
     <li><strong>Month totals</strong> at the top: renewals, paid, not paid, premium still to collect,

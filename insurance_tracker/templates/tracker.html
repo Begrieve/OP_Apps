@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Monthly tracker{% endblock %}
+{% block title %}Monthly Tracker{% endblock %}
 {% block content %}
 <div class="page-head">
-  <h1>Monthly tracker</h1>
+  <h1>Monthly Tracker</h1>
   <div class="head-actions">
     <a class="btn ghost" href="{{ url_for('tracker_view', start=prev_start, months=span, status=status, q=q) }}">‹ Earlier</a>
     <a class="btn ghost" href="{{ url_for('tracker_view', start=now_start, months=span, status=status, q=q) }}">This month</a>
